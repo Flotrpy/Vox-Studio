@@ -15,6 +15,7 @@ import { HierarchyPanel } from './panels/hierarchy.js';
 import { InspectorPanel } from './panels/inspector.js';
 import { ConsolePanel } from './panels/console.js';
 import { ProjectPanel } from './panels/project.js';
+import { AgentPanel } from './panels/agent-panel.js';
 import { DockManager } from './ui/dock.js';
 import { LAYOUT_PRESETS, DEFAULT_LAYOUT, PANEL_NEIGHBORS, PANEL_FALLBACK_SIDE } from './ui/layouts.js';
 import { MenuBar } from './ui/menu.js';
@@ -47,6 +48,7 @@ class App {
       ['hierarchy', 'Ctrl+4'],
       ['project', 'Ctrl+5'],
       ['console', 'Ctrl+Shift+C'],
+      ['agent', 'Ctrl+9'],
     ];
     this.extensions = { fileItems: [], helpItems: [], playItems: [] };
   }
@@ -63,6 +65,7 @@ class App {
       inspector: new InspectorPanel(editor),
       project: new ProjectPanel(editor),
       console: new ConsolePanel(editor),
+      agent: new AgentPanel(editor, this.agent),
     };
 
     this.dock = new DockManager(document.getElementById('dock'), new Map(Object.values(this.panels).map((p) => [p.id, p])), {

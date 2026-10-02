@@ -1044,3 +1044,54 @@ body.playing .viewport {
 .build-warning {
   color: var(--log-warning);
 }
+
+/* Agent panel --------------------------------------------------------------------- */
+
+.agent-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 4px 8px 8px;
+}
+
+.agent-section {
+  margin-bottom: 6px;
+}
+
+.agent-section-title {
+  height: 20px;
+  line-height: 20px;
+  font-weight: 600;
+  color: var(--text-strong);
+  border-bottom: 1px solid #474747;
+  margin-bottom: 2px;
+}
+
+.agent-value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  user-select: text;
+}
+
+.agent-hint {
+  color: var(--text-disabled);
+  margin: 6px 0;
+}
+
+.meter {
+  flex: 1;
+  height: 10px;
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+}
+
+.meter-fill {
+  height: 100%;
+  background: #5B7EA6;
+}
+
+.meter-text {
+  width: 40px;
+  text-align: right;
+}
