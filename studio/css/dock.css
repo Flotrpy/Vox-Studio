@@ -1,0 +1,205 @@
+/* Dockable panel layout: splits, tab groups, splitters, drag overlay. */
+
+.dock-root {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  padding: 2px;
+  background: var(--window-bg);
+}
+
+.dock-split {
+  display: flex;
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+}
+
+.dock-split.row {
+  flex-direction: row;
+}
+
+.dock-split.col {
+  flex-direction: column;
+}
+
+.dock-splitter {
+  position: relative;
+  flex: none;
+  z-index: 3;
+  background: var(--window-bg);
+}
+
+.dock-split.row > .dock-splitter {
+  width: var(--splitter-size);
+  cursor: col-resize;
+}
+
+.dock-split.col > .dock-splitter {
+  height: var(--splitter-size);
+  cursor: row-resize;
+}
+
+/* Larger invisible hit area around each splitter. */
+.dock-splitter::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+}
+
+.dock-group {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.dock-tabbar {
+  display: flex;
+  align-items: stretch;
+  flex: none;
+  height: var(--tab-height);
+  background: var(--header-bg);
+  border-bottom: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.dock-tab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  max-width: 170px;
+  padding: 0 10px 0 6px;
+  color: var(--text-disabled);
+  background: var(--header-bg);
+  border-right: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.dock-tab .icon {
+  width: 14px;
+  height: 14px;
+  color: var(--icon-disabled);
+}
+
+.dock-tab .title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dock-tab:hover {
+  background: var(--tab-hover-bg);
+  color: var(--text);
+}
+
+.dock-tab.active {
+  background: var(--tab-active-bg);
+  color: var(--text-strong);
+  margin-bottom: -1px;
+}
+
+.dock-tab.active .icon {
+  color: var(--icon);
+}
+
+.dock-tab.active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 1px;
+  background: var(--tab-accent);
+}
+
+.dock-tabbar .spacer {
+  flex: 1;
+}
+
+.dock-tabbar .dock-menu-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  color: var(--icon-disabled);
+}
+
+.dock-tabbar .dock-menu-btn:hover {
+  color: var(--icon);
+  background: var(--tab-hover-bg);
+}
+
+.dock-tabbar .dock-menu-btn .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.dock-body {
+  position: relative;
+  display: flex;
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+}
+
+.dock-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-disabled);
+}
+
+.dock-overlay {
+  position: fixed;
+  z-index: 900;
+  background: var(--overlay-fill);
+  border: 1px solid var(--tab-accent);
+  pointer-events: none;
+}
+
+.dock-ghost {
+  position: fixed;
+  z-index: 950;
+  display: flex;
+  align-items: center;
+  height: var(--tab-height);
+  padding: 0 10px;
+  background: var(--tab-active-bg);
+  border: 1px solid var(--border);
+  color: var(--text-strong);
+  pointer-events: none;
+  opacity: 0.9;
+}
+
+body.dock-dragging,
+body.dock-dragging * {
+  cursor: grabbing !important;
+}
+
+body.splitter-dragging-row,
+body.splitter-dragging-row * {
+  cursor: col-resize !important;
+}
+
+body.splitter-dragging-col,
+body.splitter-dragging-col * {
+  cursor: row-resize !important;
+}
+
+/* Every panel fills its dock body. */
+.panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+  background: var(--panel-bg);
+}
