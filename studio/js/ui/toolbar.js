@@ -16,7 +16,7 @@ const TOOLS = [
 ];
 
 export class Toolbar {
-  constructor(el, editor, { layoutItems, layoutName, onAgentClick }) {
+  constructor(el, editor, { layoutItems, layoutName, onAgentClick, onPlay, onPause, onStep }) {
     this.editor = editor;
     this.layoutName = layoutName;
 
@@ -41,6 +41,9 @@ export class Toolbar {
     tooltip(this.playBtn, 'Play (Ctrl+P)');
     tooltip(this.pauseBtn, 'Pause (Ctrl+Shift+P)');
     tooltip(this.stepBtn, 'Step one frame (Ctrl+Alt+P)');
+    this.playBtn.addEventListener('click', () => onPlay?.());
+    this.pauseBtn.addEventListener('click', () => onPause?.());
+    this.stepBtn.addEventListener('click', () => onStep?.());
 
     this.agentEl = h('button.agent-status', { type: 'button' }, h('span.dot'), h('span.agent-label', 'Agent'));
     tooltip(this.agentEl, 'Vox Agent connection');
@@ -72,6 +75,7 @@ export class Toolbar {
     this.spaceBtn.querySelector('.label').textContent = editor.space === 'global' ? 'Global' : 'Local';
     const playing = editor.playState !== 'edit';
     this.playBtn.classList.toggle('on', playing);
+    this.playBtn.dataset.tip = playing ? 'Stop (Ctrl+P)' : 'Play (Ctrl+P)';
     this.playBtn.setAttribute('aria-pressed', String(playing));
     this.pauseBtn.classList.toggle('on', editor.playState === 'paused');
     this.pauseBtn.setAttribute('aria-pressed', String(editor.playState === 'paused'));

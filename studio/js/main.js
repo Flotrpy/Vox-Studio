@@ -26,6 +26,7 @@ import { openDialog } from './ui/dialog.js';
 import { buildMenus } from './app-menus.js';
 import { Hotkeys } from './hotkeys.js';
 import { VERSION } from './version.js';
+import { PlayMode } from './play-mode.js';
 
 const LAYOUT_KEY = 'layout';
 const LAYOUT_VERSION = 1;
@@ -67,6 +68,10 @@ class App {
       neighbors: PANEL_NEIGHBORS,
       fallbackSide: PANEL_FALLBACK_SIDE,
     });
+    this.play = new PlayMode(this);
+    this.extensions.playItems.push(() => this.play.menuItems());
+    this.beforeRender = (dt) => this.play.tick(dt);
+
     this.dock.on('change', (tree) => {
       save(LAYOUT_KEY, { version: LAYOUT_VERSION, name: this.currentLayout, tree });
       this.toolbar?.update();
@@ -81,6 +86,9 @@ class App {
       ],
       layoutName: () => this.layoutName(),
       onAgentClick: () => this.showAgentInfo(),
+      onPlay: () => this.play.togglePlay(),
+      onPause: () => this.play.togglePause(),
+      onStep: () => this.play.step(),
     });
     this.statusbar = new StatusBar(document.getElementById('statusbar'), editor, {
       onMessageClick: () => this.dock.openPanel('console'),
@@ -210,6 +218,9 @@ class App {
     hk.bind('Ctrl+N', () => files.newScene());
     hk.bind('Ctrl+O', () => this.openSceneDialog());
     hk.bind('Ctrl+R', () => editor.emit('project-refresh'));
+    hk.bind('Ctrl+P', () => this.play.togglePlay());
+    hk.bind('Ctrl+Shift+P', () => this.play.togglePause());
+    hk.bind('Ctrl+Alt+P', () => this.play.step());
     hk.bind('Ctrl+Shift+N', () => editor.createObject('Empty'));
     hk.bind('Alt+Shift+N', () => editor.createObject('Empty', { asChild: true }));
     hk.bind('Ctrl+Shift+F', () => this.panels.scene.alignWithView());
