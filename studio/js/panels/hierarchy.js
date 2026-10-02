@@ -79,8 +79,10 @@ export class HierarchyPanel {
       if (path[0] === 'name' || path[0] === 'active' || path[0] === 'components') this.render();
     });
     editor.selection.on('change', () => {
-      this.revealSelection();
-      this.render();
+      // Re-render only when rows must appear; otherwise update classes in
+      // place so a drag that starts on this pointerdown keeps its element.
+      if (this.revealSelection()) this.render();
+      else this.paintSelection();
       this.scrollToActive();
     });
 
@@ -119,16 +121,36 @@ export class HierarchyPanel {
 
   // Tree model ----------------------------------------------------------------
 
+  /** Expand ancestors of selected entities. Returns true if anything opened. */
   revealSelection() {
     const { scene, selection } = this.editor;
+    let changed = false;
     for (const id of selection.ids) {
       let p = scene.get(id)?.parent ?? null;
       while (p !== null) {
-        this.expanded.add(p);
+        if (!this.expanded.has(p)) {
+          this.expanded.add(p);
+          changed = true;
+        }
         p = scene.get(p)?.parent ?? null;
       }
     }
-    if (selection.ids.length) this.sceneExpanded = true;
+    if (selection.ids.length && !this.sceneExpanded) {
+      this.sceneExpanded = true;
+      changed = true;
+    }
+    return changed;
+  }
+
+  paintSelection() {
+    const { selection } = this.editor;
+    for (const row of this.list.querySelectorAll('.tree-row[data-id]')) {
+      const id = row.dataset.id;
+      const selected = selection.has(id);
+      row.classList.toggle('selected', selected);
+      row.classList.toggle('active-row', id === selection.active);
+      row.setAttribute('aria-selected', String(selected));
+    }
   }
 
   visibleRows() {
