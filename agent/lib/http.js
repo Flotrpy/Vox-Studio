@@ -32,3 +32,63 @@ export function sendError(res, err) {
   if (err instanceof HttpError && err.details) body.error.details = err.details;
   sendJson(res, status, body);
 }
+
+/**
+ * Read a request body, refusing anything above `limit` bytes. The declared
+ * Content-Length is checked up front; the actual byte count is enforced
+ * while streaming so a lying client cannot exceed the cap.
+ */
+export function readBody(req, limit) {
+  return new Promise((resolve, reject) => {
+    const declared = Number(req.headers['content-length']);
+    if (Number.isFinite(declared) && declared > limit) {
+      reject(new HttpError(413, `Request body exceeds ${limit} bytes`));
+      req.resume();
+      return;
+    }
+    const chunks = [];
+    let size = 0;
+    let done = false;
+    req.on('data', (chunk) => {
+      if (done) return;
+      size += chunk.length;
+      if (size > limit) {
+        done = true;
+        reject(new HttpError(413, `Request body exceeds ${limit} bytes`));
+        req.resume();
+        return;
+      }
+      chunks.push(chunk);
+    });
+    req.on('end', () => {
+      if (done) return;
+      done = true;
+      resolve(Buffer.concat(chunks));
+    });
+    req.on('error', (err) => {
+      if (done) return;
+      done = true;
+      reject(err);
+    });
+  });
+}
+
+/**
+ * Parse a JSON request body. Only JSON.parse is used (request data is
+ * never evaluated) and prototype-polluting keys are dropped.
+ */
+export async function readJson(req, limit) {
+  const type = (req.headers['content-type'] || '').split(';')[0].trim().toLowerCase();
+  if (type !== 'application/json') {
+    throw new HttpError(415, 'Content-Type must be application/json');
+  }
+  const buffer = await readBody(req, limit);
+  if (buffer.length === 0) throw new HttpError(400, 'Request body is empty');
+  try {
+    return JSON.parse(buffer.toString('utf8'), (key, value) =>
+      key === '__proto__' || key === 'constructor' || key === 'prototype' ? undefined : value,
+    );
+  } catch {
+    throw new HttpError(400, 'Request body is not valid JSON');
+  }
+}
