@@ -6,7 +6,7 @@ import { createMenuItems } from './panels/create-menu.js';
 import { componentDisplayName } from './panels/inspector.js';
 import { COMPONENT_SCHEMAS } from '../../shared/scene-format.js';
 import { LAYOUT_PRESETS } from './ui/layouts.js';
-import { showAbout, showShortcuts } from './about.js';
+import { showAbout, showShortcuts, showScriptingReference } from './about.js';
 
 export function buildMenus(app) {
   const { editor, dock, files, panels } = app;
@@ -112,6 +112,7 @@ export function buildMenus(app) {
   const help = () => [
     { label: 'About Vox Studio', action: () => showAbout(editor.agent) },
     { label: 'Keyboard Shortcuts', action: () => showShortcuts() },
+    { label: 'Scripting Reference', action: () => showScriptingReference() },
     ...app.extraHelpItems(),
   ];
 

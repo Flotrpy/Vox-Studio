@@ -63,3 +63,38 @@ export function showShortcuts() {
     ),
   });
 }
+
+export const SCRIPTING_REFERENCE = [
+  ['start()', 'Runs once when Play starts.'],
+  ['update(dt)', 'Runs every frame; dt is the frame time in seconds.'],
+  ['onCollisionEnter(other)', 'A collider started touching this object.'],
+  ['onTriggerEnter(other)', 'This object entered a trigger, or something entered this trigger.'],
+  ['gameObject', 'name, tag, active, getComponent(type), destroy()'],
+  ['transform', 'position / rotation / scale (.x .y .z, set(x, y, z)), translate(x, y, z), rotate(x, y, z), forward, worldPosition'],
+  ['rigidbody', 'velocity [x, y, z], addForce(x, y, z, "force" | "impulse"), mass; null without a Rigidbody'],
+  ['Input', 'getKey("w"), getKeyDown("space"), getKeyUp(k), getAxis("Horizontal" | "Vertical"), getMouseButton(0), mousePosition'],
+  ['Time', 'time, deltaTime, frameCount'],
+  ['Debug', 'log(...), warn(...), error(...) write to the Console'],
+  ['Scene', 'find(name), findWithTag(tag)'],
+  ['Mathf', 'clamp, clamp01, lerp, moveTowards, deg2Rad, rad2Deg'],
+];
+
+export function showScriptingReference() {
+  const example = `const speed = 4;
+
+function update(dt) {
+  transform.translate(Input.getAxis("Horizontal") * speed * dt, 0, -Input.getAxis("Vertical") * speed * dt);
+  if (Input.getKeyDown("space") && rigidbody) rigidbody.addForce(0, 5, 0, "impulse");
+}`;
+  openDialog({
+    title: 'Scripting Reference',
+    width: 600,
+    body: h(
+      'div',
+      h('p', 'Script components run JavaScript in Play mode and in exported builds. Define any of these functions:'),
+      h('table.shortcuts', h('tbody', SCRIPTING_REFERENCE.map(([name, what]) => h('tr', h('td.keys', name), h('td', what))))),
+      h('p', 'Example: move with WASD or the arrow keys, jump with Space.'),
+      h('pre.mono.command', example),
+    ),
+  });
+}
