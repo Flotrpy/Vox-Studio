@@ -1,0 +1,149 @@
+/* Application frame: menu bar, main toolbar, dock area, status bar. */
+
+.app {
+  display: grid;
+  grid-template-rows: var(--menubar-height) var(--main-toolbar-height) minmax(0, 1fr) var(--statusbar-height);
+  height: 100vh;
+  width: 100vw;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* Menu bar ---------------------------------------------------------------- */
+
+.menubar {
+  display: flex;
+  align-items: stretch;
+  background: var(--menubar-bg);
+  border-bottom: 1px solid var(--border);
+  padding: 0 2px;
+}
+
+.menubar-item {
+  padding: 0 8px;
+  line-height: calc(var(--menubar-height) - 1px);
+  color: var(--text);
+}
+
+.menubar-item:hover,
+.menubar-item.open {
+  background: var(--row-hover);
+}
+
+.menubar-item.open {
+  background: var(--menu-hover);
+  color: var(--text-inverse);
+}
+
+.menubar-brand {
+  display: flex;
+  align-items: center;
+  padding: 0 8px 0 4px;
+  margin-right: 2px;
+}
+
+.menubar-brand img {
+  height: 12px;
+  width: auto;
+  display: block;
+}
+
+/* Main toolbar ------------------------------------------------------------ */
+
+.main-toolbar {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 8px;
+  background: var(--main-toolbar-bg);
+  padding: 0 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.main-toolbar .left,
+.main-toolbar .center,
+.main-toolbar .right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.main-toolbar .right {
+  justify-content: flex-end;
+}
+
+body.playing .main-toolbar {
+  background: var(--play-toolbar-bg);
+}
+
+.agent-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 22px;
+  padding: 0 8px;
+  background: var(--tool-bg);
+  border: 1px solid var(--tool-border);
+  border-radius: var(--radius);
+  white-space: nowrap;
+}
+
+.agent-status .dot {
+  width: 7px;
+  height: 7px;
+  background: var(--off);
+}
+
+.agent-status.connected .dot {
+  background: var(--ok);
+}
+
+.agent-status.unpaired .dot {
+  background: var(--warn);
+}
+
+/* Status bar -------------------------------------------------------------- */
+
+.statusbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--statusbar-bg);
+  border-top: 1px solid var(--border);
+  padding: 0 6px;
+  font-size: var(--font-size-small);
+  min-width: 0;
+}
+
+.statusbar .message {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.statusbar .message .text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.statusbar .message.warning .icon {
+  color: var(--log-warning);
+}
+
+.statusbar .message.error .icon {
+  color: var(--log-error);
+}
+
+.statusbar .right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-disabled);
+  white-space: nowrap;
+}
