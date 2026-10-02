@@ -4,6 +4,7 @@ import { registerSystem } from './jobs/system.js';
 import { registerFiles } from './jobs/files.js';
 import { registerScenes } from './jobs/scenes.js';
 import { registerAssets } from './jobs/assets.js';
+import { registerBenchmark } from './jobs/benchmark.js';
 
 /**
  * Build the API router. This list is the complete set of jobs the agent
@@ -16,5 +17,6 @@ export function createApi(config) {
   registerFiles(router, config);
   registerScenes(router, config);
   registerAssets(router, config);
+  registerBenchmark(router, config);
   return router;
 }
