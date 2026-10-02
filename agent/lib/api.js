@@ -6,6 +6,7 @@ import { registerScenes } from './jobs/scenes.js';
 import { registerAssets } from './jobs/assets.js';
 import { registerBenchmark } from './jobs/benchmark.js';
 import { registerManage } from './jobs/manage.js';
+import { registerExport } from './jobs/export.js';
 
 /**
  * Build the API router. This list is the complete set of jobs the agent
@@ -20,5 +21,6 @@ export function createApi(config) {
   registerAssets(router, config);
   registerBenchmark(router, config);
   registerManage(router, config);
+  registerExport(router, config);
   return router;
 }

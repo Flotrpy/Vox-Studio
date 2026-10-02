@@ -6,6 +6,8 @@ import { BASE_HEADERS, staticHeaders } from './headers.js';
 import { BIND_ADDRESS, checkHost, checkOrigin, checkToken } from './security.js';
 import { createStaticHandler } from './static.js';
 import { createApi } from './api.js';
+import { redeemTicket } from './jobs/export.js';
+import fs from 'node:fs/promises';
 
 const MAX_URL_LENGTH = 4096;
 
@@ -55,7 +57,27 @@ export function createAgentServer(options) {
       if (!res.writableEnded) sendJson(res, 200, result ?? { ok: true });
       return;
     }
+    const ticket = /^\/play\/([A-Za-z0-9_-]{32})$/.exec(url.pathname);
+    if (ticket) {
+      await servePlay(res, ticket[1]);
+      return;
+    }
     await serveStatic(req, res, url.pathname);
+  }
+
+  /** Serve a build opened with a one-time ticket from /api/build/ticket. */
+  async function servePlay(res, ticket) {
+    const file = redeemTicket(ticket);
+    if (!file) throw new HttpError(404, 'This play link has expired. Use Build And Run again.');
+    const html = await fs.readFile(file);
+    res.writeHead(200, {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Content-Length': html.length,
+      'Cache-Control': 'no-store',
+      'Content-Security-Policy':
+        "default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' data:; style-src 'unsafe-inline'; img-src data: blob:; connect-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+    });
+    res.end(html);
   }
 
   const server = http.createServer((req, res) => {
