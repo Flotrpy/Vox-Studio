@@ -99,13 +99,14 @@ export class EditorCamera {
 
   /** Look along a world axis (from the orientation gizmo). */
   lookAlong(axis) {
+    // Camera sits on the named side of the pivot, looking back at it.
     const views = {
-      '+x': [-Math.PI / 2, 0],
-      '-x': [Math.PI / 2, 0],
+      '+x': [Math.PI / 2, 0],
+      '-x': [-Math.PI / 2, 0],
       '+y': [0, -Math.PI / 2 + 1e-4],
       '-y': [0, Math.PI / 2 - 1e-4],
-      '+z': [Math.PI, 0],
-      '-z': [0, 0],
+      '+z': [0, 0],
+      '-z': [Math.PI, 0],
     };
     const [yaw, pitch] = views[axis];
     this.animateTo({ yaw, pitch });
