@@ -5,6 +5,10 @@
   min-width: 0;
 }
 
+.spacer {
+  flex: 1;
+}
+
 .panel-toolbar .search {
   height: 18px;
 }

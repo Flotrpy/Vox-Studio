@@ -31,7 +31,7 @@ const fragmentShader = /* glsl */ `
     float major = gridLine(coord, 10.0);
     float dist = distance(uCamera, vWorld);
     float fade = 1.0 - smoothstep(uFade * 0.35, uFade, dist);
-    float alpha = max(minor * 0.22, major * 0.42) * fade;
+    float alpha = max(minor * 0.16, major * 0.34) * fade;
     if (alpha < 0.01) discard;
     gl_FragColor = vec4(uColor, alpha);
   }
@@ -75,6 +75,6 @@ export class Grid {
     if (this.plane === 'xy') this.mesh.position.set(snap(p.x), snap(p.y), 0);
     else this.mesh.position.set(snap(p.x), 0, snap(p.z));
     this.material.uniforms.uCamera.value.copy(p);
-    this.material.uniforms.uFade.value = Math.max(30, distance * 12);
+    this.material.uniforms.uFade.value = Math.max(25, distance * 5);
   }
 }

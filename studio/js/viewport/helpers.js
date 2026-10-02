@@ -99,7 +99,7 @@ export class EditorHelpers {
   updateFrustum(item, obj, aspect) {
     const c = item.cameraSettings;
     const near = Math.max(0.01, c.near);
-    const far = Math.min(c.far, 12);
+    const far = Math.min(c.far, 4);
     const corners = (d) => {
       const hh = c.orthographic ? c.size : Math.tan((c.fov * Math.PI) / 360) * d;
       const hw = hh * aspect;
