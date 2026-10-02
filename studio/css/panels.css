@@ -502,7 +502,8 @@
 }
 
 .project-search {
-  width: 160px;
+  flex: 0 1 160px;
+  min-width: 60px;
 }
 
 .breadcrumb {
@@ -773,8 +774,13 @@
 }
 
 .console-search {
-  width: 140px;
+  flex: 0 1 140px;
+  min-width: 50px;
   margin-right: 4px;
+}
+
+.panel-toolbar > .tb-btn {
+  flex: none;
 }
 
 .counter .count {
