@@ -1,5 +1,6 @@
 import { Router } from './router.js';
 import { registerHealth } from './jobs/health.js';
+import { registerSystem } from './jobs/system.js';
 
 /**
  * Build the API router. This list is the complete set of jobs the agent
@@ -8,5 +9,6 @@ import { registerHealth } from './jobs/health.js';
 export function createApi(config) {
   const router = new Router();
   registerHealth(router, config);
+  registerSystem(router, config);
   return router;
 }
