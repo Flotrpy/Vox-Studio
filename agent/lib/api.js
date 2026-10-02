@@ -2,6 +2,7 @@ import { Router } from './router.js';
 import { registerHealth } from './jobs/health.js';
 import { registerSystem } from './jobs/system.js';
 import { registerFiles } from './jobs/files.js';
+import { registerScenes } from './jobs/scenes.js';
 
 /**
  * Build the API router. This list is the complete set of jobs the agent
@@ -12,5 +13,6 @@ export function createApi(config) {
   registerHealth(router, config);
   registerSystem(router, config);
   registerFiles(router, config);
+  registerScenes(router, config);
   return router;
 }
