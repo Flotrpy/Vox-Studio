@@ -289,6 +289,7 @@ export function validateMesh(raw, path = 'mesh', budget = { used: 0 }) {
   return {
     type: 'mesh',
     name: raw.name === undefined ? 'Mesh' : str(raw.name, `${path}.name`, LIMITS.name),
+    ...(raw.source === undefined ? {} : { source: str(raw.source, `${path}.source`, 512) }),
     positions,
     normals,
     uvs,
