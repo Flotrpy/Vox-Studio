@@ -1,0 +1,19 @@
+{
+  "name": "vox-studio",
+  "version": "0.1.0",
+  "description": "Vox Studio: a browser-based 3D game editor with the Vox Agent local helper.",
+  "type": "module",
+  "private": true,
+  "license": "MIT",
+  "author": "FLotrpy",
+  "bin": {
+    "vox-agent": "agent/agent.js"
+  },
+  "scripts": {
+    "start": "node agent/agent.js",
+    "test": "node --test test/"
+  },
+  "engines": {
+    "node": ">=18.17"
+  }
+}
