@@ -200,6 +200,8 @@ class App {
     const { editor, files } = this;
     const hk = new Hotkeys();
     this.hotkeys = hk;
+    // While playing, plain keys typed into the Game view belong to the game.
+    hk.filter = (e, combo) => editor.isPlaying && !combo.startsWith('Ctrl+') && !!e.target.closest?.('.game-view');
     const tools = { Q: 'hand', W: 'move', E: 'rotate', R: 'scale', T: 'rect', Y: 'transform' };
     for (const [key, tool] of Object.entries(tools)) hk.bind(key, () => editor.setTool(tool));
     hk.bind('Z', () => editor.setPivotMode(editor.pivotMode === 'pivot' ? 'center' : 'pivot'));
