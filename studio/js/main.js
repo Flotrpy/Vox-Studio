@@ -180,6 +180,10 @@ class App {
 
   showAgentInfo() {
     const { agent } = this;
+    if (agent.connected) {
+      this.dock.openPanel('agent');
+      return;
+    }
     const lines =
       agent.status === 'connected'
         ? [`Connected to Vox Agent ${agent.info?.version || ''}.`, `Project: ${agent.info?.project || ''}`, 'Scenes and assets are read from and saved to the project folder on disk.']
