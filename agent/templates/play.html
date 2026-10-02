@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' data:; style-src 'unsafe-inline'; img-src data: blob:; connect-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="generator" content="{{GENERATOR}}">
+<title>{{TITLE}}</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #000; }
+  canvas { display: block; width: 100vw; height: 100vh; outline: none; }
+  #vox-message { position: fixed; left: 8px; bottom: 8px; max-width: 80vw; padding: 4px 8px;
+    background: #1E1E1E; border: 1px solid #4A4A4A; color: #E0533F;
+    font: 12px "Segoe UI", Inter, -apple-system, Arial, sans-serif; }
+</style>
+<script type="importmap">{{IMPORTMAP}}</script>
+<script type="application/json" id="vox-scene">{{SCENE_JSON}}</script>
+</head>
+<body>
+<canvas id="vox-canvas" tabindex="0"></canvas>
+<div id="vox-message" hidden></div>
+<script type="module">
+  import { startPlayer } from 'vox/play/player.js';
+  const data = JSON.parse(document.getElementById('vox-scene').textContent);
+  startPlayer({ data, canvas: document.getElementById('vox-canvas'), overlay: document.getElementById('vox-message') });
+</script>
+<noscript>This game needs JavaScript.</noscript>
+</body>
+</html>

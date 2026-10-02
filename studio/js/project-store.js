@@ -4,6 +4,7 @@
 
 import { serializeScene, parseScene, serializeMesh, parseMeshFile, normalizeScene } from '../../shared/scene-format.js';
 import { parseObj } from '../../shared/obj-parser.js';
+import { parseGltf } from '../../shared/gltf-parser.js';
 import { load, save } from './core/storage.js';
 
 const enc = encodeURIComponent;
@@ -131,18 +132,25 @@ export class LocalProject {
     return parseMeshFile(file.content);
   }
 
-  async importAsset(name, format, data) {
-    if (format !== 'obj') throw new Error('Without the Vox Agent only OBJ files can be imported into the browser project.');
+  async importAsset(name, format, data, encoding = 'utf8') {
     const base = name.replace(/\.[^.]*$/, '').replace(/[^A-Za-z0-9 _.-]/g, '_').slice(0, 64) || 'Model';
-    const { meshes } = parseObj(data, base);
+    let result;
+    if (format === 'obj') result = parseObj(data, base);
+    else if (format === 'gltf' || format === 'glb') {
+      const input = encoding === 'base64' ? Uint8Array.from(atob(data), (c) => c.charCodeAt(0)) : data;
+      result = parseGltf(input, base);
+    } else throw new Error(`Unsupported format "${format}"`);
+    const { meshes } = result;
     const written = meshes.map((mesh, i) => {
-      const path = meshes.length === 1 ? `Assets/Models/${base}.voxmesh` : `Assets/Models/${base}/${mesh.name || base}_${i}.voxmesh`;
+      const safe = String(mesh.name || base).replace(/[^A-Za-z0-9 _.-]/g, '_').slice(0, 64);
+      const path = meshes.length === 1 ? `Assets/Models/${base}.voxmesh` : `Assets/Models/${base}/${safe}_${i}.voxmesh`;
+      const { extra, ...plain } = mesh;
       this.ensureFolder(parentOf(path));
-      this.data.files[path] = { content: serializeMesh(mesh), modified: Date.now() };
-      return { path, mesh };
+      this.data.files[path] = { content: serializeMesh(plain), modified: Date.now() };
+      return { path, mesh: plain, ...(extra || {}) };
     });
     this.persist();
-    return { ok: true, name: base, format, meshes: written };
+    return { ok: true, name: base, format, meshes: written, nodes: result.nodes || null };
   }
 
   ensureFolder(path) {

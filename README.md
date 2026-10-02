@@ -8,6 +8,8 @@ your own machine, so the browser tab does not run into its limits.
 > Vox Studio is inspired by popular game editors. Not affiliated with or
 > endorsed by Unity Technologies. Unity is a trademark of Unity Technologies.
 
+![Vox Studio editor](docs/images/editor.png)
+
 ## Requirements
 
 - Node.js 20 or newer. The agent has no npm dependencies.
@@ -89,6 +91,62 @@ duplicate, Ctrl+C/Ctrl+V, F2 rename, Ctrl+Z / Ctrl+Y undo/redo, Ctrl+S save,
 Ctrl+Shift+S save as, Ctrl+N new scene, Ctrl+P play. Help > Keyboard
 Shortcuts lists them all.
 
+## Play mode
+
+Press Play (Ctrl+P). The editor snapshots the scene, switches to the Game
+view and runs physics and scripts; Pause and Step work as usual, and the
+toolbar and viewports are tinted while playing. Stop restores the snapshot,
+so anything changed during play (by the simulation or by hand) is
+discarded.
+
+- **Rigidbody** adds gravity, drag, bounciness and friction.
+- **Box Collider / Sphere Collider** collide (axis-aligned; bodies do not
+  rotate) or act as triggers with Is Trigger.
+- **Script** components hold JavaScript. Help > Scripting Reference lists
+  the API:
+
+```js
+const speed = 4;
+
+function start() {
+  Debug.log("Hello from " + gameObject.name);
+}
+
+function update(dt) {
+  transform.translate(Input.getAxis("Horizontal") * speed * dt, 0, -Input.getAxis("Vertical") * speed * dt);
+  if (Input.getKeyDown("space") && rigidbody) rigidbody.addForce(0, 5, 0, "impulse");
+}
+
+function onCollisionEnter(other) {
+  Debug.log("Hit " + other.name);
+}
+```
+
+Script errors go to the Console with the object and script name; with Error
+Pause on, play pauses on the first error.
+
+## Importing models
+
+Assets > Import New Asset (or drop files on the Project panel) accepts
+`.obj`, `.gltf` (with embedded buffers) and `.glb`. With the agent running,
+conversion happens in the agent process and the result is written to
+`Assets/Models/*.voxmesh`; glTF node hierarchies and base colors are kept.
+Drag a `.voxmesh` from the Project panel into the Scene view or Hierarchy
+to place it.
+
+## Building a standalone game
+
+File > Build Settings, then Build or Build And Run (Ctrl+B). The agent writes
+`Builds/<Scene>/play.html`: one file containing the engine, your scripts and
+the scene. Open it in any modern browser, no server needed. Build And Run
+opens it right away through a one-time link from the agent.
+
+## Agent panel
+
+Window > Agent (or click the agent status in the toolbar) shows the
+machine's memory and CPU as reported by the agent and runs the CPU and
+memory benchmarks.
+
 ## Project folder
 
 ```
@@ -96,7 +154,7 @@ VoxProject/
   Assets/
     Scenes/        .voxscene files
     Models/        .voxmesh files produced by asset import
-  Builds/          standalone exports
+  Builds/          standalone exports (<Scene>/play.html)
   .vox/
     ProjectSettings.json
 ```
@@ -108,8 +166,24 @@ npm test
 ```
 
 Runs the agent security tests (token, Origin, Host, path traversal, size
-limits), scene format and serialization tests, scene model and undo/redo
-tests and dock layout tests with Node's built-in test runner.
+limits, build export), scene format and serialization tests, OBJ and glTF
+parser tests, scene model and undo/redo tests, dock layout tests and physics
+and scripting tests with Node's built-in test runner.
+
+## Architecture
+
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how the studio, the
+shared format code and the agent fit together.
+
+## Roadmap
+
+- Rotated (oriented) box colliders and rigid body rotation
+- Textures and materials in glTF import; texture assets in the Project panel
+- Prefabs and multi-object editing in the Inspector
+- Audio sources and listeners
+- Multiple scenes in one build, scene loading from scripts
+- Lightmapping and baked ambient occlusion jobs in the agent
+- Optional script editor with syntax highlighting
 
 ## Security
 

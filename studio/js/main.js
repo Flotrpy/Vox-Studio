@@ -15,6 +15,7 @@ import { HierarchyPanel } from './panels/hierarchy.js';
 import { InspectorPanel } from './panels/inspector.js';
 import { ConsolePanel } from './panels/console.js';
 import { ProjectPanel } from './panels/project.js';
+import { AgentPanel } from './panels/agent-panel.js';
 import { DockManager } from './ui/dock.js';
 import { LAYOUT_PRESETS, DEFAULT_LAYOUT, PANEL_NEIGHBORS, PANEL_FALLBACK_SIDE } from './ui/layouts.js';
 import { MenuBar } from './ui/menu.js';
@@ -26,6 +27,8 @@ import { openDialog } from './ui/dialog.js';
 import { buildMenus } from './app-menus.js';
 import { Hotkeys } from './hotkeys.js';
 import { VERSION } from './version.js';
+import { PlayMode } from './play-mode.js';
+import { BuildCommands } from './build.js';
 
 const LAYOUT_KEY = 'layout';
 const LAYOUT_VERSION = 1;
@@ -45,6 +48,7 @@ class App {
       ['hierarchy', 'Ctrl+4'],
       ['project', 'Ctrl+5'],
       ['console', 'Ctrl+Shift+C'],
+      ['agent', 'Ctrl+9'],
     ];
     this.extensions = { fileItems: [], helpItems: [], playItems: [] };
   }
@@ -61,12 +65,19 @@ class App {
       inspector: new InspectorPanel(editor),
       project: new ProjectPanel(editor),
       console: new ConsolePanel(editor),
+      agent: new AgentPanel(editor, this.agent),
     };
 
     this.dock = new DockManager(document.getElementById('dock'), new Map(Object.values(this.panels).map((p) => [p.id, p])), {
       neighbors: PANEL_NEIGHBORS,
       fallbackSide: PANEL_FALLBACK_SIDE,
     });
+    this.play = new PlayMode(this);
+    this.extensions.playItems.push(() => this.play.menuItems());
+    this.builds = new BuildCommands(this);
+    this.extensions.fileItems.push(() => this.builds.menuItems());
+    this.beforeRender = (dt) => this.play.tick(dt);
+
     this.dock.on('change', (tree) => {
       save(LAYOUT_KEY, { version: LAYOUT_VERSION, name: this.currentLayout, tree });
       this.toolbar?.update();
@@ -81,6 +92,9 @@ class App {
       ],
       layoutName: () => this.layoutName(),
       onAgentClick: () => this.showAgentInfo(),
+      onPlay: () => this.play.togglePlay(),
+      onPause: () => this.play.togglePause(),
+      onStep: () => this.play.step(),
     });
     this.statusbar = new StatusBar(document.getElementById('statusbar'), editor, {
       onMessageClick: () => this.dock.openPanel('console'),
@@ -166,6 +180,10 @@ class App {
 
   showAgentInfo() {
     const { agent } = this;
+    if (agent.connected) {
+      this.dock.openPanel('agent');
+      return;
+    }
     const lines =
       agent.status === 'connected'
         ? [`Connected to Vox Agent ${agent.info?.version || ''}.`, `Project: ${agent.info?.project || ''}`, 'Scenes and assets are read from and saved to the project folder on disk.']
@@ -192,6 +210,8 @@ class App {
     const { editor, files } = this;
     const hk = new Hotkeys();
     this.hotkeys = hk;
+    // While playing, plain keys typed into the Game view belong to the game.
+    hk.filter = (e, combo) => editor.isPlaying && !combo.startsWith('Ctrl+') && !!e.target.closest?.('.game-view');
     const tools = { Q: 'hand', W: 'move', E: 'rotate', R: 'scale', T: 'rect', Y: 'transform' };
     for (const [key, tool] of Object.entries(tools)) hk.bind(key, () => editor.setTool(tool));
     hk.bind('Z', () => editor.setPivotMode(editor.pivotMode === 'pivot' ? 'center' : 'pivot'));
@@ -210,6 +230,11 @@ class App {
     hk.bind('Ctrl+N', () => files.newScene());
     hk.bind('Ctrl+O', () => this.openSceneDialog());
     hk.bind('Ctrl+R', () => editor.emit('project-refresh'));
+    hk.bind('Ctrl+P', () => this.play.togglePlay());
+    hk.bind('Ctrl+Shift+P', () => this.play.togglePause());
+    hk.bind('Ctrl+Alt+P', () => this.play.step());
+    hk.bind('Ctrl+Shift+B', () => this.builds.showDialog());
+    hk.bind('Ctrl+B', () => this.builds.build({ run: true }));
     hk.bind('Ctrl+Shift+N', () => editor.createObject('Empty'));
     hk.bind('Alt+Shift+N', () => editor.createObject('Empty', { asChild: true }));
     hk.bind('Ctrl+Shift+F', () => this.panels.scene.alignWithView());

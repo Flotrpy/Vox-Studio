@@ -1,5 +1,6 @@
 import { HttpError } from '../http.js';
 import { parseObj, ObjParseError } from '../../../shared/obj-parser.js';
+import { parseGltf } from '../../../shared/gltf-parser.js';
 import { serializeMesh, validateMesh, SceneFormatError } from '../../../shared/scene-format.js';
 import { writeProjectFile } from './scenes.js';
 
@@ -12,6 +13,14 @@ export const IMPORTERS = {
   obj: {
     encoding: 'utf8',
     convert: (buffer, baseName) => parseObj(buffer.toString('utf8'), baseName),
+  },
+  gltf: {
+    encoding: 'utf8',
+    convert: (buffer, baseName) => parseGltf(new Uint8Array(buffer), baseName),
+  },
+  glb: {
+    encoding: 'base64',
+    convert: (buffer, baseName) => parseGltf(new Uint8Array(buffer), baseName),
   },
 };
 

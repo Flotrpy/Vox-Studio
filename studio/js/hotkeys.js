@@ -39,6 +39,7 @@ export class Hotkeys {
     const action = this.bindings.get(combo);
     if (!action) return;
     if (isTyping(e.target) && !WORKS_WHILE_TYPING.has(combo)) return;
+    if (this.filter?.(e, combo)) return;
     if (action(e) === false) return;
     e.preventDefault();
     e.stopPropagation();

@@ -105,3 +105,26 @@ test('folder, rename and delete stay inside managed folders', async (t) => {
   assert.equal((await request('POST', '/api/delete', { body: { path: 'Assets/Scenes/B.voxscene' } })).status, 200);
   assert.equal((await request('POST', '/api/delete', { body: { path: 'Assets/Prefabs' } })).status, 200);
 });
+
+test('glTF import keeps the node tree and material color', async (t) => {
+  const { request } = await startAgent(t);
+  const positions = Buffer.from(new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0]).buffer);
+  const gltf = {
+    asset: { version: '2.0' },
+    nodes: [{ name: 'Tri', mesh: 0, translation: [0, 1, 0] }],
+    scenes: [{ nodes: [0] }],
+    meshes: [{ primitives: [{ attributes: { POSITION: 0 }, material: 0 }] }],
+    materials: [{ pbrMetallicRoughness: { baseColorFactor: [0, 0, 1, 1] } }],
+    buffers: [{ byteLength: 36, uri: `data:application/octet-stream;base64,${positions.toString('base64')}` }],
+    bufferViews: [{ buffer: 0, byteLength: 36 }],
+    accessors: [{ bufferView: 0, componentType: 5126, count: 3, type: 'VEC3' }],
+  };
+  const res = await request('POST', '/api/assets/import', { body: { name: 'tri.gltf', format: 'gltf', data: JSON.stringify(gltf) } });
+  assert.equal(res.status, 200, res.text);
+  assert.equal(res.json.meshes[0].color, '#0000FF');
+  assert.deepEqual(res.json.nodes.children[0].transform.position, [0, 1, 0]);
+  const glbAsText = await request('POST', '/api/assets/import', { body: { name: 'x.glb', format: 'glb', data: 'abc' } });
+  assert.equal(glbAsText.status, 400);
+  const broken = await request('POST', '/api/assets/import', { body: { name: 'x.glb', format: 'glb', data: 'AAAA', encoding: 'base64' } });
+  assert.equal(broken.status, 422);
+});

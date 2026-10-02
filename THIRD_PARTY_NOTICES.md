@@ -8,6 +8,8 @@ used under its own license, reproduced or referenced below.
 - Files: `studio/vendor/three/three.module.min.js` (unmodified build)
 - Source: https://github.com/mrdoob/three.js (npm package `three@0.160.1`)
 - License: MIT, full text in `studio/vendor/three/LICENSE`
+- Standalone builds (`play.html`) embed the same unmodified file, which keeps
+  its license header.
 
 ```
 The MIT License
