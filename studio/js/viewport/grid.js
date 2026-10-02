@@ -34,6 +34,7 @@ const fragmentShader = /* glsl */ `
     float alpha = max(minor * 0.16, major * 0.34) * fade;
     if (alpha < 0.01) discard;
     gl_FragColor = vec4(uColor, alpha);
+    #include <colorspace_fragment>
   }
 `;
 

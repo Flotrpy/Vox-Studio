@@ -67,6 +67,15 @@ svg.icon {
   outline-offset: -1px;
 }
 
+/* Lists and viewports show focus through their selection color instead. */
+.tree:focus-visible,
+.asset-area:focus-visible,
+.console-list:focus-visible,
+.project-tree:focus-visible,
+canvas:focus-visible {
+  outline: none;
+}
+
 /* Thin flat scrollbars. */
 * {
   scrollbar-width: thin;

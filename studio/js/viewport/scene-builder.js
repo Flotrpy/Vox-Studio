@@ -280,7 +280,7 @@ export class SceneBuilder {
     light.color.set(data.color);
     light.visible = data.enabled !== false;
     if (data.lightType === 'Directional') {
-      light.intensity = data.intensity * Math.PI;
+      light.intensity = data.intensity * 1.6;
       light.shadow.camera.left = -20;
       light.shadow.camera.right = 20;
       light.shadow.camera.top = 20;

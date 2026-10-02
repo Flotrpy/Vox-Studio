@@ -30,6 +30,7 @@ const quadFragment = /* glsl */ `
     float a = clamp(edge - center, 0.0, 1.0);
     if (a < 0.01) discard;
     gl_FragColor = vec4(uColor, a);
+    #include <colorspace_fragment>
   }
 `;
 
