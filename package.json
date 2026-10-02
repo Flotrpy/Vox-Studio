@@ -11,9 +11,9 @@
   },
   "scripts": {
     "start": "node agent/agent.js",
-    "test": "node --test test/"
+    "test": "node --test"
   },
   "engines": {
-    "node": ">=18.17"
+    "node": ">=20"
   }
 }
