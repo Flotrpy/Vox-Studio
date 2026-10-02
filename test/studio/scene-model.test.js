@@ -135,3 +135,10 @@ test('dirty flag tracks edits', () => {
   model.markClean();
   assert.equal(model.dirty, false);
 });
+
+test('studio version matches package.json', async () => {
+  const { VERSION } = await import('../../studio/js/version.js');
+  const { readFile } = await import('node:fs/promises');
+  const pkg = JSON.parse(await readFile(new URL('../../package.json', import.meta.url), 'utf8'));
+  assert.equal(VERSION, pkg.version);
+});
