@@ -67,10 +67,12 @@ export function groupsIn(node) {
 export function normalizeLayout(node, knownPanels, seen = new Set()) {
   if (!node || typeof node !== 'object') return null;
   if (node.type === 'tabs') {
-    const panels = (Array.isArray(node.panels) ? node.panels : []).filter(
-      (id) => typeof id === 'string' && (!knownPanels || knownPanels.has(id)) && !seen.has(id),
-    );
-    panels.forEach((id) => seen.add(id));
+    const panels = [];
+    for (const id of Array.isArray(node.panels) ? node.panels : []) {
+      if (typeof id !== 'string' || seen.has(id) || (knownPanels && !knownPanels.has(id))) continue;
+      seen.add(id);
+      panels.push(id);
+    }
     if (panels.length === 0) return null;
     const active = Number.isInteger(node.active) ? Math.min(Math.max(node.active, 0), panels.length - 1) : 0;
     return { ...node, type: 'tabs', panels, active };
