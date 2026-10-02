@@ -27,7 +27,7 @@ const ICONS = {
   sun: `<circle cx="8" cy="8" r="3"/><path d="M7.3 0.5h1.4v2.4H7.3zM7.3 13.1h1.4v2.4H7.3zM0.5 7.3h2.4v1.4H0.5zM13.1 7.3h2.4v1.4h-2.4zM2.4 3.4l1-1 1.7 1.7-1 1zM10.9 11.9l1-1 1.7 1.7-1 1zM2.4 12.6l1.7-1.7 1 1-1.7 1.7zM10.9 4.1l1.7-1.7 1 1-1.7 1.7z"/>`,
   camera: `<rect x="1" y="4.5" width="9.5" height="7.5"/><path d="M11.2 7.6L15 5v6.5l-3.8-2.6z"/>`,
   script: `<path ${S} d="M3 1.6h7l3 3v9.8H3z"/><path d="M6.6 6.8L4.8 9l1.8 2.2-.8.7L3.4 9l2.4-2.9zM9.4 6.8l1.8 2.2-1.8 2.2.8.7L12.6 9l-2.4-2.9z"/>`,
-  rigidbody: `<circle cx="8" cy="6" r="4.2"/><path d="M7.3 10.5h1.4v2.2h1.6L8 15.4l-2.3-2.7h1.6z"/>`,
+  rigidbody: `<path ${S} stroke-width="1.5" d="M5.6 6.2V5a2.4 2.4 0 0 1 4.8 0v1.2"/><path d="M3.6 6.4h8.8l1.9 8.1H1.7z"/>`,
   collider: `<path fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="2 1.4" d="M2 2h12v12H2z"/><rect x="5.5" y="5.5" width="5" height="5"/>`,
   'transform-comp': `<path d="M7.3 1.5h1.4v6.2l5.4 3.1-.7 1.2L8 8.9l-5.4 3.1-.7-1.2 5.4-3.1z"/>`,
   info: `<circle ${S} stroke-width="1.4" cx="8" cy="8" r="6.3"/><rect x="7.2" y="7" width="1.6" height="5"/><rect x="7.2" y="4" width="1.6" height="1.7"/>`,
