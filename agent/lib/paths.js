@@ -51,3 +51,32 @@ export function isWithin(root, target) {
 export function toProjectPath(root, absPath) {
   return path.relative(path.resolve(root), absPath).split(path.sep).join('/');
 }
+
+/**
+ * Resolve a request path and make sure no symlink along the way points
+ * outside the project. For paths that do not exist yet (writes), the
+ * nearest existing ancestor is checked instead.
+ */
+export async function resolveReal(root, relPath) {
+  const target = resolveInside(root, relPath);
+  const realRoot = await fs.realpath(path.resolve(root));
+
+  let probe = target;
+  const missing = [];
+  for (;;) {
+    try {
+      const real = await fs.realpath(probe);
+      if (!isWithin(realRoot, real)) {
+        throw new HttpError(403, 'Path resolves outside the project folder');
+      }
+      return path.join(real, ...missing.reverse());
+    } catch (err) {
+      if (err instanceof HttpError) throw err;
+      if (err.code !== 'ENOENT' && err.code !== 'ENOTDIR') throw err;
+      const parent = path.dirname(probe);
+      if (parent === probe) throw new HttpError(400, 'Path does not exist');
+      missing.push(path.basename(probe));
+      probe = parent;
+    }
+  }
+}
