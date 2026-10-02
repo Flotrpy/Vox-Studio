@@ -270,6 +270,28 @@ export class SceneView {
     };
   }
 
+  /** Place selected objects at the view pivot (GameObject > Move To View). */
+  moveToView() {
+    const entries = this.gizmoTargets().map((id) => {
+      const object = this.builder.object(id);
+      const before = structuredClone(this.editor.scene.get(id).transform);
+      const quat = object.getWorldQuaternion(new THREE.Quaternion());
+      return { id, before, after: localFromWorld(object, this.controls.pivot.clone(), quat, before.scale) };
+    });
+    if (entries.length) this.editor.execute(setTransformsCommand(this.editor.scene, entries, 'Move To View'));
+  }
+
+  /** Match selected objects to the scene camera (GameObject > Align With View). */
+  alignWithView() {
+    const camera = this.controls.camera;
+    const entries = this.gizmoTargets().map((id) => {
+      const object = this.builder.object(id);
+      const before = structuredClone(this.editor.scene.get(id).transform);
+      return { id, before, after: localFromWorld(object, camera.position.clone(), camera.quaternion.clone(), before.scale) };
+    });
+    if (entries.length) this.editor.execute(setTransformsCommand(this.editor.scene, entries, 'Align With View'));
+  }
+
   /** World bounds of entities (meshes, or a small box at their position). */
   boundsOf(ids) {
     const box = new THREE.Box3();
