@@ -166,10 +166,12 @@ export class SceneBuilder {
   removeEntity(id) {
     const node = this.nodes.get(id);
     if (!node) return;
+    const childIds = [];
     node.group.traverse((child) => {
       const childId = child.userData.entityId;
-      if (childId && childId !== id) this.removeEntity(childId);
+      if (childId && childId !== id && this.nodes.get(childId)?.group === child) childIds.push(childId);
     });
+    for (const childId of childIds) this.removeEntity(childId);
     for (const part of Object.values(node.parts)) if (part) disposePart(part);
     node.group.removeFromParent();
     this.nodes.delete(id);
