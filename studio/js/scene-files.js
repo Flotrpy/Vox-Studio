@@ -8,7 +8,7 @@ import { load, save } from './core/storage.js';
 import { newId } from './core/scene-model.js';
 import { meshAssetObject } from './core/primitives.js';
 import { newSceneData } from './core/editor.js';
-import { parseScene, serializeScene, SCENE_EXTENSION } from '../../shared/scene-format.js';
+import { parseScene, serializeScene, SCENE_EXTENSION, createComponent, createTransform } from '../../shared/scene-format.js';
 
 const AUTOSAVE_KEY = 'autosave';
 const LAST_SCENE_KEY = 'lastScene';
@@ -235,21 +235,26 @@ export class SceneFiles {
   // Assets -------------------------------------------------------------------------
 
   async importDialog() {
-    const files = await pickFiles('.obj', true);
+    const files = await pickFiles('.obj,.gltf,.glb', true);
     await this.importFiles(files);
   }
 
   async importFiles(files) {
     for (const file of files) {
       const ext = file.name.slice(file.name.lastIndexOf('.') + 1).toLowerCase();
-      if (ext !== 'obj') {
-        this.editor.log.warn(`${file.name}: unsupported file type`);
+      if (!['obj', 'gltf', 'glb'].includes(ext)) {
+        this.editor.log.warn(`${file.name}: unsupported file type (use .obj, .gltf or .glb)`);
         continue;
       }
       try {
-        const text = await readFileAs(file, 'text');
         this.editor.log.info(`Importing ${file.name}...`);
-        const result = await this.editor.project.importAsset(file.name, ext, text);
+        let result;
+        if (ext === 'glb') {
+          const dataUrl = await readFileAs(file, 'dataurl');
+          result = await this.editor.project.importAsset(file.name, ext, dataUrl.slice(dataUrl.indexOf(',') + 1), 'base64');
+        } else {
+          result = await this.editor.project.importAsset(file.name, ext, await readFileAs(file, 'text'));
+        }
         this.addImported(result);
       } catch (err) {
         this.editor.log.error(`Import failed: ${file.name}`, err.message);
@@ -258,10 +263,44 @@ export class SceneFiles {
     this.editor.emit('project-refresh');
   }
 
+  /** Entity records for a glTF node tree (root first, depth-first). */
+  recordsFromNodes(node, assetIds, colors, parent = null, out = []) {
+    const record = {
+      id: newId(),
+      name: String(node.name || 'Node').slice(0, 128),
+      parent,
+      active: true,
+      static: false,
+      tag: 'Untagged',
+      layer: 'Default',
+      transform: node.transform ? structuredClone(node.transform) : createTransform(),
+      components: [],
+    };
+    if (node.mesh !== null && node.mesh !== undefined) {
+      record.components.push(
+        createComponent('MeshFilter', { mesh: `asset:${assetIds[node.mesh]}` }),
+        createComponent('MeshRenderer', colors[node.mesh] ? { color: colors[node.mesh] } : {}),
+      );
+    }
+    out.push(record);
+    for (const child of node.children || []) this.recordsFromNodes(child, assetIds, colors, record.id, out);
+    return out;
+  }
+
   /** Put imported meshes into the scene under one parent object. */
   addImported(result) {
-    const records = [];
     const meshes = result.meshes || [];
+    if (result.nodes) {
+      const assetIds = meshes.map((item) => this.registerMesh(item.path, item.mesh));
+      const colors = meshes.map((item) => item.color || null);
+      const records = this.recordsFromNodes(result.nodes, assetIds, colors);
+      records[0].name = this.scene.uniqueName(result.name, null);
+      this.editor.createFromRecords([records], null, undefined, `Import ${result.name}`);
+      this.editor.log.info(`Imported ${result.name} (${meshes.length} mesh${meshes.length === 1 ? '' : 'es'}, ${records.length} objects)`);
+      this.editor.frameSelected();
+      return;
+    }
+    const records = [];
     let root = null;
     if (meshes.length > 1) {
       root = { ...meshAssetObject(result.name, 'x'), components: [] };
