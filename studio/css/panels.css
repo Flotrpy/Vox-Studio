@@ -1011,3 +1011,36 @@ body.playing .viewport {
   background: var(--menu-hover);
   color: var(--text-inverse);
 }
+
+/* Build settings ------------------------------------------------------------------ */
+
+.build-section-title {
+  margin: 4px 0 4px;
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+.build-scenes {
+  min-height: 60px;
+  margin-bottom: 8px;
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+}
+
+.build-scene {
+  display: flex;
+  gap: 10px;
+  height: 18px;
+  padding: 0 6px;
+  align-items: center;
+  background: var(--row-selected-unfocused);
+}
+
+.build-path {
+  color: var(--text-strong);
+  user-select: text;
+}
+
+.build-warning {
+  color: var(--log-warning);
+}

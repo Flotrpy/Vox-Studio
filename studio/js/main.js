@@ -27,6 +27,7 @@ import { buildMenus } from './app-menus.js';
 import { Hotkeys } from './hotkeys.js';
 import { VERSION } from './version.js';
 import { PlayMode } from './play-mode.js';
+import { BuildCommands } from './build.js';
 
 const LAYOUT_KEY = 'layout';
 const LAYOUT_VERSION = 1;
@@ -70,6 +71,8 @@ class App {
     });
     this.play = new PlayMode(this);
     this.extensions.playItems.push(() => this.play.menuItems());
+    this.builds = new BuildCommands(this);
+    this.extensions.fileItems.push(() => this.builds.menuItems());
     this.beforeRender = (dt) => this.play.tick(dt);
 
     this.dock.on('change', (tree) => {
@@ -223,6 +226,8 @@ class App {
     hk.bind('Ctrl+P', () => this.play.togglePlay());
     hk.bind('Ctrl+Shift+P', () => this.play.togglePause());
     hk.bind('Ctrl+Alt+P', () => this.play.step());
+    hk.bind('Ctrl+Shift+B', () => this.builds.showDialog());
+    hk.bind('Ctrl+B', () => this.builds.build({ run: true }));
     hk.bind('Ctrl+Shift+N', () => editor.createObject('Empty'));
     hk.bind('Alt+Shift+N', () => editor.createObject('Empty', { asChild: true }));
     hk.bind('Ctrl+Shift+F', () => this.panels.scene.alignWithView());
