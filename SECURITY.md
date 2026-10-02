@@ -25,6 +25,9 @@ jobs on behalf of the editor:
 | `POST /api/folder`         | Create a folder under `Assets/` or `Builds/`          |
 | `POST /api/rename`         | Rename an asset under `Assets/` or `Builds/`          |
 | `POST /api/delete`         | Delete an asset file or an empty folder               |
+| `POST /api/export`         | Write a standalone build to `Builds/<Name>/play.html` |
+| `POST /api/build/ticket`   | Issue a one-time link to open a build                 |
+| `GET  /play/<ticket>`      | Serve that build once (the ticket is the credential)  |
 
 There is **no** endpoint that runs shell commands, spawns processes, loads
 plugins or evaluates code sent by a client. New capabilities are added as new,
@@ -103,12 +106,30 @@ folders.
   unknown component types are rejected, unknown fields are dropped, numbers
   must be finite and in range, ids must match a safe pattern, parent links
   must exist and must not form cycles, and sizes are bounded.
-- Imported models are parsed by small dedicated parsers with vertex and
-  index bounds checks; uploaded file names are reduced to safe base names.
+- Imported models (OBJ, glTF, GLB) are parsed by small dedicated parsers
+  with vertex, index and buffer bounds checks. glTF files may only carry
+  embedded `data:` buffers; external URIs are refused, so an import can
+  never make the agent read another file or fetch from the network. Uploaded
+  file names are reduced to safe base names.
 - Benchmarks run a fixed workload in a worker thread with a time cap, a
   memory cap and one-at-a-time concurrency.
 
-### 6. Information leaks
+### 6. Builds
+
+- The export job only writes `Builds/<Name>/play.html`; the folder name is
+  reduced to letters, digits, spaces, `_` and `-`.
+- The scene is validated before it is embedded and is placed in a
+  `<script type="application/json">` element with `<`, `>`, `&`, U+2028 and
+  U+2029 escaped, so names or script text cannot break out of it. The title
+  is HTML-escaped.
+- Builds carry a Content-Security-Policy that allows only their own inline
+  and `data:` scripts and blocks every network request (`connect-src
+  'none'`, no remote scripts, images or frames).
+- Build And Run cannot carry the token in a URL, so the agent issues a
+  random 192-bit ticket that is valid for 60 seconds and for one request,
+  and only for an existing `Builds/<name>/play.html`.
+
+### 7. Information leaks
 
 The token is never written to request logs. Error responses carry short,
 fixed messages without stack traces or absolute paths. Responses include
@@ -134,4 +155,5 @@ scripts from the agent itself plus the hashed inline import map.
 `npm test` runs the security test suite in `test/agent/`, covering missing
 and wrong tokens, foreign and cross-site origins, rebinding Host headers,
 traversal attempts on every file endpoint, symlink escapes, oversized and
-chunked bodies, non-JSON bodies and unknown endpoints.
+chunked bodies, non-JSON bodies, unknown endpoints, script-tag injection in
+exported builds and single-use play tickets.
