@@ -1,0 +1,102 @@
+import http from 'node:http';
+import path from 'node:path';
+import { REPO_ROOT } from './version.js';
+import { HttpError, sendError, sendJson, readJson } from './http.js';
+import { BASE_HEADERS, staticHeaders } from './headers.js';
+import { BIND_ADDRESS, checkHost, checkOrigin, checkToken } from './security.js';
+import { createStaticHandler } from './static.js';
+import { createApi } from './api.js';
+
+const MAX_URL_LENGTH = 4096;
+
+/**
+ * Build the agent HTTP server. Nothing is listening until `listen()`.
+ *
+ * Every request passes the same gate: URL length, Host header, Origin
+ * header. API requests additionally need the pairing token and are routed
+ * only to explicitly registered jobs.
+ */
+export function createAgentServer(options) {
+  const config = {
+    port: options.port,
+    project: path.resolve(options.project),
+    token: options.token,
+    maxBody: options.maxBody,
+    studioDir: options.studioDir || path.join(REPO_ROOT, 'studio'),
+    sharedDir: options.sharedDir || path.join(REPO_ROOT, 'shared'),
+    log: options.log || (() => {}),
+  };
+
+  const router = createApi(config);
+  const serveStatic = createStaticHandler(
+    { '/': config.studioDir, '/shared/': config.sharedDir },
+    staticHeaders,
+  );
+
+  async function handle(req, res) {
+    for (const [name, value] of Object.entries(BASE_HEADERS)) res.setHeader(name, value);
+
+    if ((req.url || '').length > MAX_URL_LENGTH) throw new HttpError(414, 'URL too long');
+    checkHost(req, config.port);
+    checkOrigin(req, config.port);
+
+    const url = new URL(req.url, `http://127.0.0.1:${config.port}`);
+    if (url.pathname.startsWith('/api/')) {
+      checkToken(req, config.token);
+      const handler = router.match(req.method, url.pathname);
+      const ctx = {
+        req,
+        res,
+        query: url.searchParams,
+        config,
+        json: () => readJson(req, config.maxBody),
+      };
+      const result = await handler(ctx);
+      if (!res.writableEnded) sendJson(res, 200, result ?? { ok: true });
+      return;
+    }
+    await serveStatic(req, res, url.pathname);
+  }
+
+  const server = http.createServer((req, res) => {
+    const started = Date.now();
+    res.on('finish', () => {
+      config.log({
+        method: req.method,
+        // Only the path is logged; query strings may carry file names but
+        // the token travels in a header and is never written out.
+        path: (req.url || '').split('?')[0],
+        status: res.statusCode,
+        ms: Date.now() - started,
+      });
+    });
+    handle(req, res).catch((err) => {
+      if (!(err instanceof HttpError)) console.error(err);
+      sendError(res, err);
+    });
+  });
+  server.headersTimeout = 10_000;
+  server.requestTimeout = 60_000;
+  server.maxHeadersCount = 64;
+
+  return {
+    server,
+    config,
+    listen() {
+      return new Promise((resolve, reject) => {
+        server.once('error', reject);
+        server.listen(config.port, BIND_ADDRESS, () => {
+          server.off('error', reject);
+          config.port = server.address().port;
+          resolve(config.port);
+        });
+      });
+    },
+    close() {
+      return new Promise((resolve) => {
+        server.close(() => resolve());
+        server.closeAllConnections?.();
+      });
+    },
+  };
+}
