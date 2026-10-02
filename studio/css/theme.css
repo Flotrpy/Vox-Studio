@@ -1,0 +1,103 @@
+/* Vox Studio theme. Every color, font and metric used by the editor lives
+   here so the look can be tuned in one place. */
+
+:root {
+  /* Surfaces */
+  --window-bg: #282828;
+  --panel-bg: #383838;
+  --header-bg: #2B2B2B;
+  --tab-active-bg: #383838;
+  --tab-hover-bg: #323232;
+  --tab-accent: #3F7CB8;
+  --panel-toolbar-bg: #3C3C3C;
+  --main-toolbar-bg: #191919;
+  --menubar-bg: #282828;
+  --statusbar-bg: #191919;
+  --foldout-bg: #3E3E3E;
+  --row-alt-bg: #3C3C3C;
+  --viewport-bg: #303030;
+
+  /* Inputs */
+  --input-bg: #2A2A2A;
+  --input-border: #1A1A1A;
+  --input-text: #D2D2D2;
+  --input-focus-border: #3F7CB8;
+
+  /* Lines */
+  --border: #191919;
+  --separator: #191919;
+  --indent-guide: #4A4A4A;
+
+  /* Rows */
+  --row-hover: #4A4A4A;
+  --row-selected: #2C5D87;
+  --row-selected-unfocused: #4D4D4D;
+
+  /* Text */
+  --text: #C8C8C8;
+  --text-strong: #E6E6E6;
+  --text-disabled: #7A7A7A;
+  --text-inverse: #FFFFFF;
+  --icon: #C4C4C4;
+  --icon-disabled: #6E6E6E;
+
+  /* Buttons */
+  --button-bg: #585858;
+  --button-border: #303030;
+  --button-hover: #676767;
+  --button-pressed: #46607C;
+  --tool-bg: #383838;
+  --tool-hover: #464646;
+  --tool-on: #46607C;
+  --tool-border: #0F0F0F;
+
+  /* Menus and popups */
+  --menu-bg: #383838;
+  --menu-border: #191919;
+  --menu-hover: #2C5D87;
+  --tooltip-bg: #1E1E1E;
+  --tooltip-border: #4A4A4A;
+  --overlay-fill: rgba(63, 124, 184, 0.25);
+
+  /* Axes */
+  --axis-x: #DB2C21;
+  --axis-y: #7EBE2B;
+  --axis-z: #3D7BE0;
+  --axis-hover: #F6D33C;
+
+  /* Console */
+  --log-info: #C8C8C8;
+  --log-warning: #E8B53B;
+  --log-error: #E0533F;
+
+  /* Status colors */
+  --ok: #6CA544;
+  --off: #8A8A8A;
+  --warn: #E8B53B;
+
+  /* Play mode */
+  --play-toolbar-bg: #1E2833;
+  --play-border: #3F6A96;
+
+  /* Focus */
+  --focus-ring: #4D90D8;
+
+  /* Type */
+  --font-ui: "Segoe UI", Inter, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: Consolas, "SF Mono", Menlo, "DejaVu Sans Mono", "Liberation Mono", monospace;
+  --font-size: 12px;
+  --font-size-small: 11px;
+
+  /* Metrics */
+  --radius: 2px;
+  --row-height: 18px;
+  --field-height: 18px;
+  --menubar-height: 22px;
+  --main-toolbar-height: 32px;
+  --statusbar-height: 20px;
+  --tab-height: 20px;
+  --panel-toolbar-height: 21px;
+  --splitter-size: 3px;
+  --indent: 14px;
+  --label-width: 40%;
+}

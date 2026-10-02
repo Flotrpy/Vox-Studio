@@ -1,0 +1,119 @@
+/* Reset and element defaults. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  background: var(--window-bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: var(--font-size);
+  line-height: 16px;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  cursor: default;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: default;
+}
+
+input,
+textarea {
+  user-select: text;
+}
+
+svg.icon {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  fill: currentColor;
+  display: block;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+/* Visible focus rings for keyboard users only. */
+:focus {
+  outline: none;
+}
+
+:focus-visible {
+  outline: 1px solid var(--focus-ring);
+  outline-offset: -1px;
+}
+
+/* Lists and viewports show focus through their selection color instead. */
+.tree:focus-visible,
+.asset-area:focus-visible,
+.console-list:focus-visible,
+.project-tree:focus-visible,
+canvas:focus-visible {
+  outline: none;
+}
+
+/* Thin flat scrollbars. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #5E5E5E transparent;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #5E5E5E;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: #6E6E6E;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
