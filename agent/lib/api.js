@@ -8,6 +8,7 @@ import { registerBenchmark } from './jobs/benchmark.js';
 import { registerManage } from './jobs/manage.js';
 import { registerExport } from './jobs/export.js';
 import { registerJobs } from './jobs/jobs.js';
+import { registerUploads } from './jobs/uploads.js';
 
 /**
  * Build the API router. This list is the complete set of jobs the agent
@@ -25,5 +26,6 @@ export function createApi(config) {
   registerManage(router, config);
   registerExport(router, config);
   registerJobs(router, config);
+  registerUploads(router, config);
   return router;
 }

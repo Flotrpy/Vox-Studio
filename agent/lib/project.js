@@ -17,6 +17,9 @@ export async function ensureProject(root) {
     await fs.mkdir(path.join(root, ...folder.split('/')), { recursive: true });
   }
 
+  // Leftover partial uploads from an earlier run are never resumed.
+  await fs.rm(path.join(root, '.vox', 'uploads'), { recursive: true, force: true });
+
   const settingsPath = path.join(root, ...SETTINGS_FILE.split('/'));
   let settings;
   try {
