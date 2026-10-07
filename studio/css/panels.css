@@ -959,6 +959,10 @@ body.playing .viewport {
   margin: 4px 0 10px;
 }
 
+:root[data-theme="light"] .about-logo {
+  filter: invert(1);
+}
+
 .about-version {
   color: var(--text-strong);
 }

@@ -42,10 +42,8 @@
   margin-right: 2px;
 }
 
-.menubar-brand img {
-  height: 12px;
-  width: auto;
-  display: block;
+.menubar-brand .icon {
+  color: var(--text);
 }
 
 /* Main toolbar ------------------------------------------------------------ */

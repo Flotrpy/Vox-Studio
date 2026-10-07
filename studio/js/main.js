@@ -30,6 +30,8 @@ import { Hotkeys } from './hotkeys.js';
 import { VERSION } from './version.js';
 import { PlayMode } from './play-mode.js';
 import { BuildCommands } from './build.js';
+import { applyTheme, showPreferences } from './preferences.js';
+import { icon } from './ui/icons.js';
 
 const LAYOUT_KEY = 'layout';
 const LAYOUT_VERSION = 1;
@@ -56,6 +58,7 @@ class App {
 
   start() {
     const { editor } = this;
+    applyTheme();
     installTooltips();
     bindSceneModel(this.builder, editor.scene, () => this.invalidateViews());
 
@@ -139,7 +142,7 @@ class App {
   }
 
   addBrand() {
-    const brand = h('div.menubar-brand', h('img', { src: 'img/mark.svg', alt: 'Vox Studio', width: 15, height: 12 }));
+    const brand = h('div.menubar-brand', { title: 'Vox Studio' }, icon('favicon'));
     document.getElementById('menubar').prepend(brand);
   }
 
@@ -241,6 +244,7 @@ class App {
     hk.bind('Ctrl+Alt+P', () => this.play.step());
     hk.bind('Ctrl+Shift+B', () => this.builds.showDialog());
     hk.bind('Ctrl+B', () => this.builds.build({ run: true }));
+    hk.bind('Ctrl+,', () => showPreferences());
     hk.bind('Ctrl+Shift+N', () => editor.createObject('Empty'));
     hk.bind('Alt+Shift+N', () => editor.createObject('Empty', { asChild: true }));
     hk.bind('Ctrl+Shift+F', () => this.panels.scene.alignWithView());
