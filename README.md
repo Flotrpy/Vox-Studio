@@ -1,5 +1,21 @@
 # Vox Studio
 
+[![CI](https://github.com/Flotrpy/Vox-Studio/actions/workflows/ci.yml/badge.svg)](https://github.com/Flotrpy/Vox-Studio/actions/workflows/ci.yml)
+![version](https://img.shields.io/badge/version-0.1.0-8b5cf6)
+[![node](https://img.shields.io/badge/node-20%2B-5fa04e?logo=nodedotjs&logoColor=white)](package.json)
+[![license](https://img.shields.io/badge/license-MIT-97ca00)](LICENSE)
+
+![editor](https://img.shields.io/badge/editor-plain%20ES%20modules-f7df1e?logo=javascript&logoColor=white)
+[![3D](https://img.shields.io/badge/3D-Three.js%20r160-000000?logo=threedotjs&logoColor=white)](THIRD_PARTY_NOTICES.md)
+![agent](https://img.shields.io/badge/agent-Node.js%2C%20zero%20deps-339933?logo=nodedotjs&logoColor=white)
+![bundler](https://img.shields.io/badge/bundler-none-lightgrey)
+![live updates](https://img.shields.io/badge/live%20updates-Server--Sent%20Events-5ba3e6)
+
+[![tests](https://img.shields.io/badge/tests-114%20unit%20%C2%B7%2030%20browser-44cc11)](#tests)
+[![browser tests](https://img.shields.io/badge/browser%20tests-Playwright-2ead33?logo=playwright&logoColor=white)](playwright.config.js)
+![test runner](https://img.shields.io/badge/test%20runner-node%20----test-339933?logo=nodedotjs&logoColor=white)
+[![security](https://img.shields.io/badge/security-threat%20model-6f42c1)](SECURITY.md)
+
 Vox Studio is a browser-based 3D game editor. **Vox Agent** is its small
 local helper: a Node.js process you start from a terminal that serves the
 editor and does the heavy work (file access, asset conversion, builds) on
@@ -12,12 +28,14 @@ your own machine, so the browser tab does not run into its limits.
 
 ## Requirements
 
-- Node.js 20 or newer. The agent has no npm dependencies.
+- Node.js 20 or newer. The agent has no npm dependencies; Playwright is a
+  dev dependency used only by the browser tests.
+- A modern browser with WebGL (Chrome, Edge, Firefox or Safari).
 
 ## Running the agent
 
 ```
-node agent/agent.js
+npm start            # same as: node agent/agent.js
 ```
 
 The console prints something like:
@@ -37,16 +55,16 @@ uses a new, never-stored token on every run.
 
 Options (`node agent/agent.js --help`):
 
-| Option            | Default        | Meaning                                    |
-| ----------------- | -------------- | ------------------------------------------ |
-| `--port <n>`      | `8787`         | Port on 127.0.0.1                          |
-| `--project <dir>` | `./VoxProject` | Project folder (created if missing)        |
-| `--max-body <mb>` | `16`           | Largest accepted request body              |
-| `--projects-root <dir>` | parent of `--project` | Where New Project creates projects |
-| `--max-upload <mb>` | `512`        | Largest chunked upload                     |
-| `--new-token`     | off            | Issue a new pairing token (unpairs browsers) |
-| `--no-persist`    | off            | New token every run, never stored          |
-| `--quiet`         | off            | Do not log requests                        |
+| Option                  | Default               | Meaning                                      |
+| ----------------------- | --------------------- | -------------------------------------------- |
+| `--port <n>`            | `8787`                | Port on 127.0.0.1                            |
+| `--project <dir>`       | `./VoxProject`        | Project folder (created if missing)          |
+| `--projects-root <dir>` | parent of `--project` | Where New Project creates projects           |
+| `--max-body <mb>`       | `16`                  | Largest accepted request body                |
+| `--max-upload <mb>`     | `512`                 | Largest chunked upload                       |
+| `--new-token`           | off                   | Issue a new pairing token (unpairs browsers) |
+| `--no-persist`          | off                   | New token every run, never stored            |
+| `--quiet`               | off                   | Do not log requests                          |
 
 After pairing once, the studio reconnects by itself when you reopen
 `http://127.0.0.1:8787/`, even after the agent restarts. The agent watches
@@ -179,26 +197,27 @@ VoxProject/
 
 ## Tests
 
+| Command               | What it runs                                                   |
+| --------------------- | -------------------------------------------------------------- |
+| `npm test`            | Unit tests with Node's built-in runner (`node --test`)         |
+| `npm run test:e2e`    | Browser tests (Playwright, Chromium)                           |
+| `npm run test:visual` | Screenshot baselines, see [docs/UI_REFERENCE.md](docs/UI_REFERENCE.md) |
+| `npm run test:all`    | Unit tests, then browser tests                                 |
+
+The unit tests cover agent security (token, Origin, Host, path traversal,
+size limits, build export), the scene format and serialization, the OBJ and
+glTF parsers, the scene model and undo/redo, dock layout, and physics and
+scripting. The browser tests cover editing, docking, play mode, builds and
+the layout metrics at 1920x1080 and 1366x768. Install Chromium once before
+the first browser run:
+
 ```
-npm test
+npx playwright install chromium
 ```
 
-Browser tests (Playwright, Chromium) cover editing, docking, play mode,
-builds and the layout metrics at 1920x1080 and 1366x768:
-
-```
-npx playwright install chromium   # once
-npm run test:e2e
-npm run test:visual               # screenshot baselines, see docs/UI_REFERENCE.md
-```
-
-CI (`.github/workflows/ci.yml`) runs the unit tests on Node 20 and 22 and
-the browser tests on every pull request.
-
-`npm test` runs the agent security tests (token, Origin, Host, path traversal, size
-limits, build export), scene format and serialization tests, OBJ and glTF
-parser tests, scene model and undo/redo tests, dock layout tests and physics
-and scripting tests with Node's built-in test runner.
+CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs the unit
+tests on Node 20 and 22, then the browser tests, on every pull request and
+every push to `main`.
 
 ## Architecture
 
