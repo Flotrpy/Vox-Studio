@@ -8,5 +8,6 @@ export function registerHealth(router, config) {
     agent: 'Vox Agent',
     version: VERSION,
     project: path.basename(config.project),
+    persistentToken: config.persistentToken,
   }));
 }

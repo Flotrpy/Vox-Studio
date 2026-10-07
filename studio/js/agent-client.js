@@ -32,7 +32,15 @@ export class AgentClient extends Emitter {
       window.history.replaceState(null, '', url);
       return match[1];
     }
-    return load('token', null, 'session');
+    // A remembered token (agent runs with a persistent token) lets the
+    // studio reconnect without the URL fragment after the agent restarts.
+    return load('token', null, 'session') || load('token', null, 'local');
+  }
+
+  /** Keep the token across browser restarts only if the agent persists it. */
+  rememberToken(persistent) {
+    if (persistent) save('token', this.token, 'local');
+    else remove('token', 'local');
   }
 
   get connected() {
@@ -78,6 +86,7 @@ export class AgentClient extends Emitter {
     if (res.status === 401) {
       this.setStatus('unpaired');
       remove('token', 'session');
+      remove('token', 'local');
     }
     if (!res.ok) throw new AgentError(res.status, data?.error?.message || `Request failed (${res.status})`);
     return data;
@@ -98,6 +107,7 @@ export class AgentClient extends Emitter {
     }
     try {
       const info = await this.get('/api/health');
+      if (this.info?.persistentToken !== info.persistentToken) this.rememberToken(!!info.persistentToken);
       this.setStatus('connected', info);
       return true;
     } catch (err) {
