@@ -40,7 +40,19 @@ Options (`node agent/agent.js --help`):
 | `--port <n>`      | `8787`         | Port on 127.0.0.1                          |
 | `--project <dir>` | `./VoxProject` | Project folder (created if missing)        |
 | `--max-body <mb>` | `16`           | Largest accepted request body              |
+| `--projects-root <dir>` | parent of `--project` | Where New Project creates projects |
+| `--max-upload <mb>` | `512`        | Largest chunked upload                     |
+| `--new-token`     | off            | Issue a new pairing token (unpairs browsers) |
+| `--no-persist`    | off            | New token every run, never stored          |
 | `--quiet`         | off            | Do not log requests                        |
+
+After pairing once, the studio reconnects by itself when you reopen
+`http://127.0.0.1:8787/`, even after the agent restarts. The agent watches
+the project folder and pushes changes to the Project panel; a scene changed
+on disk is reloaded when it has no unsaved edits. Imports, builds and
+benchmarks run as background jobs with progress and a cancel button in the
+status bar, and large files are uploaded in chunks. File > New Project and
+Open Project switch between projects in the projects root.
 
 ## The editor
 
