@@ -22,7 +22,10 @@ test('imports can run as background jobs with progress', async (t) => {
   assert.equal(job.progress, 1);
   assert.equal(job.result.meshes[0].path, 'Assets/Models/tri.voxmesh');
   const list = await request('GET', '/api/jobs');
-  assert.ok(list.json.jobs.some((j) => j.id === start.json.jobId));
+  const listed = list.json.jobs.find((j) => j.id === start.json.jobId);
+  assert.ok(listed);
+  // The list carries metadata only; model data stays out of it.
+  assert.equal('result' in listed, false);
 });
 
 test('a running benchmark can be cancelled', async (t) => {

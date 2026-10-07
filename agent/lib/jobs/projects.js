@@ -73,7 +73,9 @@ async function switchTo(config, dir) {
   await ensureProject(dir);
   config.project = path.resolve(dir);
   config.watch?.();
-  await rememberProject(config, dir);
+  // The recent list is a convenience; failing to save it must not fail a
+  // switch that has already happened.
+  await rememberProject(config, dir).catch(() => {});
   const info = { id: projectId(dir), name: path.basename(dir) };
   config.events?.broadcast('project', info);
   return { ok: true, ...info };
@@ -92,13 +94,13 @@ export async function createProject(config, name) {
     throw new HttpError(400, 'Project names use letters, digits, spaces, "_" and "-" (up to 64)');
   }
   const dir = path.join(config.projectsRoot, name.trim());
-  try {
-    await fs.access(dir);
-    throw new HttpError(409, 'A folder with that name already exists');
-  } catch (err) {
-    if (err instanceof HttpError) throw err;
-  }
   await fs.mkdir(config.projectsRoot, { recursive: true });
+  try {
+    await fs.mkdir(dir);
+  } catch (err) {
+    if (err.code === 'EEXIST') throw new HttpError(409, 'A folder with that name already exists');
+    throw err;
+  }
   return switchTo(config, dir);
 }
 

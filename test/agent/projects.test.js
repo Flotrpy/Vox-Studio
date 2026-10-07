@@ -110,3 +110,9 @@ test('an upload started in one project cannot be imported into another', async (
   assert.equal(imported.status, 409);
   assert.equal((await request('POST', '/api/uploads/cancel', { body: { id } })).status, 200);
 });
+
+test('creating the same project twice at once yields one 409', async (t) => {
+  const { request } = await startAgent(t);
+  const results = await Promise.all([1, 2].map(() => request('POST', '/api/projects/create', { body: { name: 'Twin' } })));
+  assert.deepEqual(results.map((r) => r.status).sort(), [200, 409]);
+});

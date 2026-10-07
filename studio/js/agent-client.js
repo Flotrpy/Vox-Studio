@@ -224,16 +224,33 @@ export class AgentClient extends Emitter {
     };
   }
 
-  /** Upload bytes in chunks; resolves with the upload id. */
-  async upload(bytes, onProgress = () => {}) {
+  /**
+   * Upload bytes in chunks; resolves with the upload id. Aborting `signal`
+   * (or any failure) cancels the upload on the agent so it frees its slot.
+   */
+  async upload(bytes, onProgress = () => {}, signal) {
+    if (signal?.aborted) throw new AgentError(499, 'Cancelled');
     const { uploadId, chunkSize } = await this.post('/api/uploads/start', { size: bytes.byteLength });
+    try {
+      await this.sendChunks(uploadId, chunkSize, bytes, onProgress, signal);
+      await this.post('/api/uploads/finish', { id: uploadId });
+    } catch (err) {
+      await this.post('/api/uploads/cancel', { id: uploadId }).catch(() => {});
+      throw signal?.aborted ? new AgentError(499, 'Cancelled') : err;
+    }
+    return uploadId;
+  }
+
+  async sendChunks(uploadId, chunkSize, bytes, onProgress, signal) {
     for (let offset = 0; offset < bytes.byteLength; offset += chunkSize) {
+      if (signal?.aborted) throw new AgentError(499, 'Cancelled');
       const chunk = bytes.subarray(offset, Math.min(bytes.byteLength, offset + chunkSize));
       const res = await fetch(`/api/uploads/chunk?id=${uploadId}&offset=${offset}`, {
         method: 'POST',
         headers: { 'X-Vox-Token': this.token, ...this.projectHeader(), 'Content-Type': 'application/octet-stream' },
         body: chunk,
         credentials: 'omit',
+        signal,
       });
       if (!res.ok) {
         const data = await res.json().catch(() => null);
@@ -241,8 +258,6 @@ export class AgentClient extends Emitter {
       }
       onProgress((offset + chunk.byteLength) / bytes.byteLength);
     }
-    await this.post('/api/uploads/finish', { id: uploadId });
-    return uploadId;
   }
 
   startPolling() {

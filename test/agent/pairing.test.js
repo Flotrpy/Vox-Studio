@@ -49,9 +49,12 @@ test('a corrupt pairing file is replaced', async (t) => {
 test('config folder and new CLI options', () => {
   assert.equal(userConfigDir({ VOX_AGENT_HOME: '/x/y' }, 'linux'), path.resolve('/x/y'));
   assert.equal(userConfigDir({ XDG_CONFIG_HOME: '/cfg' }, 'linux'), path.join('/cfg', 'vox-agent'));
-  const c = parseArgs(['--project', '/p/game', '--new-token', '--no-persist', '--max-upload', '64']);
+  const c = parseArgs(['--project', '/p/game', '--new-token', '--max-upload', '64']);
   assert.equal(c.newToken, true);
-  assert.equal(c.persistToken, false);
+  assert.equal(c.persistToken, true);
+  assert.equal(parseArgs(['--no-persist']).persistToken, false);
+  // --no-persist would leave the stored token valid for the next run.
+  assert.throws(() => parseArgs(['--new-token', '--no-persist']), /cannot be combined/);
   assert.equal(c.maxUpload, 64 * 1024 * 1024);
   assert.equal(c.projectsRoot, path.resolve('/p'));
 });

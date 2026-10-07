@@ -3,6 +3,8 @@ import { HttpError } from './http.js';
 
 const KEEP_FINISHED = 50;
 const PROGRESS_INTERVAL_MS = 100;
+/** How long a finished job keeps its result (an import's can be large). */
+export const RESULT_TTL_MS = 60_000;
 
 export class JobCancelled extends Error {
   constructor() {
@@ -66,6 +68,14 @@ export class JobManager {
       .finally(() => {
         job.finished = Date.now();
         this.send(job, true);
+        // The studio picks the result up from this event or one poll; do not
+        // keep model data alive for every finished job.
+        if (job.result !== null) {
+          setTimeout(() => {
+            job.result = null;
+            job.resultExpired = true;
+          }, RESULT_TTL_MS).unref?.();
+        }
         this.prune();
       });
     return { jobId: id };
@@ -82,8 +92,12 @@ export class JobManager {
     return this.publicView(job);
   }
 
+  /** Job metadata only; fetch one job for its result. */
   list() {
-    return [...this.jobs.values()].map((j) => this.publicView(j));
+    return [...this.jobs.values()].map((j) => {
+      const { result, ...rest } = this.publicView(j);
+      return rest;
+    });
   }
 
   cancel(id) {

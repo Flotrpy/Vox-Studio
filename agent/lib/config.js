@@ -118,6 +118,11 @@ export function parseArgs(argv, cwd = process.cwd()) {
         throw new ConfigError(`Unknown option: ${arg}`);
     }
   }
+  if (config.newToken && !config.persistToken) {
+    // --no-persist would leave the stored token untouched, so it would come
+    // back on the next normal start instead of being revoked.
+    throw new ConfigError('--new-token cannot be combined with --no-persist');
+  }
   if (!config.projectsRoot) config.projectsRoot = path.dirname(config.project);
   return config;
 }

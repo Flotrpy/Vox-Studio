@@ -17,9 +17,6 @@ export async function ensureProject(root) {
     await fs.mkdir(path.join(root, ...folder.split('/')), { recursive: true });
   }
 
-  // Leftover partial uploads from an earlier run are never resumed.
-  await fs.rm(path.join(root, '.vox', 'uploads'), { recursive: true, force: true });
-
   const settingsPath = path.join(root, ...SETTINGS_FILE.split('/'));
   let settings;
   try {
@@ -39,4 +36,39 @@ export async function ensureProject(root) {
     });
   }
   return settings;
+}
+
+/**
+ * Folder for partial uploads, <project>/.vox/uploads. Throws if .vox or
+ * uploads is a link or otherwise resolves outside the project, so neither
+ * writes nor cleanup can reach files elsewhere.
+ */
+export async function uploadsDir(root) {
+  const realRoot = await fs.realpath(root);
+  const dir = path.join(realRoot, '.vox', 'uploads');
+  for (const p of [path.join(realRoot, '.vox'), dir]) {
+    let stat;
+    try {
+      stat = await fs.lstat(p);
+    } catch (err) {
+      if (err.code === 'ENOENT') continue;
+      throw err;
+    }
+    if (!stat.isDirectory()) throw new Error(`${p} is not a plain folder`);
+  }
+  return dir;
+}
+
+/**
+ * Remove partial uploads left by an earlier run (they are never resumed).
+ * Called once at startup; skipped when the folder is a link.
+ */
+export async function clearStaleUploads(root) {
+  let dir;
+  try {
+    dir = await uploadsDir(root);
+  } catch {
+    return;
+  }
+  await fs.rm(dir, { recursive: true, force: true });
 }
