@@ -32,8 +32,8 @@ export class AgentPanel {
     refresh.addEventListener('click', () => this.refresh());
     this.cpuBtn = h('button.tb-btn', { type: 'button' }, 'CPU Benchmark');
     this.memBtn = h('button.tb-btn', { type: 'button' }, 'Memory Benchmark');
-    tooltip(this.cpuBtn, 'Run a 1 second CPU benchmark on this machine');
-    tooltip(this.memBtn, 'Run a 1 second memory bandwidth benchmark on this machine');
+    tooltip(this.cpuBtn, 'Run a 2 second CPU benchmark on this machine');
+    tooltip(this.memBtn, 'Run a 2 second memory bandwidth benchmark on this machine');
     this.cpuBtn.addEventListener('click', () => this.bench('cpu'));
     this.memBtn.addEventListener('click', () => this.bench('memory'));
 
@@ -74,13 +74,18 @@ export class AgentPanel {
     this.busy = true;
     this.render();
     try {
-      const r = await this.agent.post('/api/benchmark', { kind, durationMs: 1000 });
+      const r = await this.editor.tasks.run(`${kind === 'cpu' ? 'CPU' : 'Memory'} benchmark`, (task) => {
+        const job = this.agent.runJob('/api/benchmark', { kind, durationMs: 2000 }, (j) => task.update(j.progress, 'Running'));
+        task.onCancel = job.cancel;
+        return job.promise;
+      });
       const value = kind === 'cpu' ? `${r.opsPerSecond.toLocaleString()} ${r.unit}` : `${r.mbPerSecond.toLocaleString()} ${r.unit}`;
       this.results.unshift({ kind, value, time: new Date() });
       this.results.length = Math.min(this.results.length, 6);
       this.editor.log.info(`${kind === 'cpu' ? 'CPU' : 'Memory'} benchmark: ${value}`);
     } catch (err) {
-      this.editor.log.error('Benchmark failed', err.message);
+      if (err.status === 499) this.editor.log.warn('Benchmark cancelled');
+      else this.editor.log.error('Benchmark failed', err.message);
     }
     this.busy = false;
     this.render();

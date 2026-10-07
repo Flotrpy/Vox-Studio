@@ -1,22 +1,27 @@
 #!/usr/bin/env node
 import { parseArgs, ConfigError, HELP_TEXT } from './lib/config.js';
 import { PRODUCT, VERSION } from './lib/version.js';
-import { createToken } from './lib/token.js';
-import { ensureProject } from './lib/project.js';
+import { loadPairingToken } from './lib/pairing.js';
+import { userConfigDir } from './lib/user-config.js';
+import { rememberProject } from './lib/jobs/projects.js';
+import { ensureProject, clearStaleUploads } from './lib/project.js';
 import { createAgentServer } from './lib/server.js';
 
-function printBanner(port, token, project) {
-  const url = `http://127.0.0.1:${port}/#token=${token}`;
+function printBanner(port, pairing, project) {
+  const url = `http://127.0.0.1:${port}/#token=${pairing.token}`;
   const lines = [
     '',
     `${PRODUCT} v${VERSION}`,
     '',
     `  Studio URL   ${url}`,
-    `  Pairing      ${token}`,
+    `  Pairing      ${pairing.token}`,
     `  Project      ${project}`,
     '',
-    '  Open the Studio URL in your browser. The pairing token is new every',
-    '  time the agent starts; anyone with it can use the agent, so do not share it.',
+    pairing.persistent
+      ? '  Open the Studio URL once to pair. Paired browsers can reopen\n' +
+        `  http://127.0.0.1:${port}/ after restarts; run with --new-token to revoke them.`
+      : '  Open the Studio URL in your browser. The pairing token is new every\n  time the agent starts.',
+    '  Anyone with the token can use the agent, so do not share it.',
     '  Press Ctrl+C to stop.',
     '',
   ];
@@ -52,12 +57,18 @@ async function main() {
   }
 
   await ensureProject(config.project);
-  const token = createToken();
+  await clearStaleUploads(config.project);
+  const pairing = await loadPairingToken(userConfigDir(), { persist: config.persistToken, rotate: config.newToken });
+  const token = pairing.token;
   const agent = createAgentServer({
     port: config.port,
     project: config.project,
     token,
+    persistentToken: pairing.persistent,
     maxBody: config.maxBody,
+    maxUpload: config.maxUpload,
+    projectsRoot: config.projectsRoot,
+    configDir: userConfigDir(),
     log: requestLogger(config.quiet),
   });
 
@@ -70,7 +81,8 @@ async function main() {
     }
     throw err;
   }
-  printBanner(agent.config.port, token, config.project);
+  await rememberProject(agent.config, config.project).catch(() => {});
+  printBanner(agent.config.port, pairing, config.project);
 
   let stopping = false;
   const stop = async () => {

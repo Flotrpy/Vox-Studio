@@ -7,9 +7,44 @@ import { BIND_ADDRESS, checkHost, checkOrigin, checkToken } from './security.js'
 import { createStaticHandler } from './static.js';
 import { createApi } from './api.js';
 import { redeemTicket } from './jobs/export.js';
+import { EventHub, STREAMING } from './events.js';
+import { JobManager } from './job-manager.js';
+import { watchProject } from './watcher.js';
+import { projectId } from './jobs/projects.js';
 import fs from 'node:fs/promises';
 
 const MAX_URL_LENGTH = 4096;
+
+/**
+ * API routes that do not act on the current project's files, so they work
+ * from a tab that still thinks another project is open.
+ */
+const PROJECT_FREE = new Set([
+  '/api/health',
+  '/api/events',
+  '/api/system',
+  '/api/benchmark',
+  '/api/jobs',
+  '/api/job',
+  '/api/jobs/cancel',
+  '/api/uploads/cancel',
+  '/api/projects',
+  '/api/projects/open',
+  '/api/projects/create',
+]);
+
+/**
+ * The studio sends the id of the project it has open in X-Vox-Project. If
+ * another tab switched the agent to a different project since, refuse the
+ * request so a stale tab cannot read or overwrite files in the new project.
+ */
+export function checkProject(req, pathname, project) {
+  const expected = req.headers['x-vox-project'];
+  if (expected === undefined || PROJECT_FREE.has(pathname)) return;
+  if (expected !== projectId(project)) {
+    throw new HttpError(409, 'The agent switched to another project', { code: 'project-changed' });
+  }
+}
 
 /**
  * Build the agent HTTP server. Nothing is listening until `listen()`.
@@ -23,11 +58,25 @@ export function createAgentServer(options) {
     port: options.port,
     project: path.resolve(options.project),
     token: options.token,
+    persistentToken: !!options.persistentToken,
     maxBody: options.maxBody,
+    maxUpload: options.maxUpload || 512 * 1024 * 1024,
+    projectsRoot: path.resolve(options.projectsRoot || path.dirname(path.resolve(options.project))),
+    configDir: options.configDir || null,
     studioDir: options.studioDir || path.join(REPO_ROOT, 'studio'),
     sharedDir: options.sharedDir || path.join(REPO_ROOT, 'shared'),
     log: options.log || (() => {}),
   };
+
+  config.events = new EventHub();
+  config.jobs = new JobManager(config.events);
+  let watcher = null;
+  /** (Re)start watching the current project folder. */
+  config.watch = () => {
+    watcher?.close();
+    watcher = watchProject(config.project, (paths) => config.events.broadcast('files', { paths }));
+  };
+  if (options.watch !== false) config.watch();
 
   const router = createApi(config);
   const serveStatic = createStaticHandler(
@@ -45,15 +94,23 @@ export function createAgentServer(options) {
     const url = new URL(req.url, `http://127.0.0.1:${config.port}`);
     if (url.pathname.startsWith('/api/')) {
       checkToken(req, config.token);
+      checkProject(req, url.pathname, config.project);
       const handler = router.match(req.method, url.pathname);
       const ctx = {
         req,
         res,
         query: url.searchParams,
         config,
-        json: () => readJson(req, config.maxBody),
+        // Check again once the body has arrived: another tab may have
+        // switched projects while it was streaming.
+        json: async () => {
+          const body = await readJson(req, config.maxBody);
+          checkProject(req, url.pathname, config.project);
+          return body;
+        },
       };
       const result = await handler(ctx);
+      if (result === STREAMING) return;
       if (!res.writableEnded) sendJson(res, 200, result ?? { ok: true });
       return;
     }
@@ -115,6 +172,8 @@ export function createAgentServer(options) {
       });
     },
     close() {
+      watcher?.close();
+      config.events.close();
       return new Promise((resolve) => {
         server.close(() => resolve());
         server.closeAllConnections?.();

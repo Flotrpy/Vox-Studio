@@ -1,27 +1,20 @@
 import { HttpError } from '../http.js';
-import { parseObj, ObjParseError } from '../../../shared/obj-parser.js';
-import { parseGltf } from '../../../shared/gltf-parser.js';
-import { serializeMesh, validateMesh, SceneFormatError } from '../../../shared/scene-format.js';
+import { Worker } from 'node:worker_threads';
+import { serializeMesh, validateMesh } from '../../../shared/scene-format.js';
+import { PARSE_ERRORS } from './converters.js';
+import { JobCancelled, checkCancelled } from '../job-manager.js';
+import { maybeAsync } from './jobs.js';
 import { writeProjectFile } from './scenes.js';
 
 /**
- * Importers keyed by source format. Each takes the decoded upload and
- * returns { meshes: [...] } in Vox mesh layout. Only these formats can be
- * imported; nothing else in the upload is interpreted.
+ * Accepted source formats and how their bytes arrive in a JSON upload.
+ * Conversion itself runs in a worker thread (import-worker.js); only these
+ * formats can be imported and nothing else in an upload is interpreted.
  */
 export const IMPORTERS = {
-  obj: {
-    encoding: 'utf8',
-    convert: (buffer, baseName) => parseObj(buffer.toString('utf8'), baseName),
-  },
-  gltf: {
-    encoding: 'utf8',
-    convert: (buffer, baseName) => parseGltf(new Uint8Array(buffer), baseName),
-  },
-  glb: {
-    encoding: 'base64',
-    convert: (buffer, baseName) => parseGltf(new Uint8Array(buffer), baseName),
-  },
+  obj: { encoding: 'utf8' },
+  gltf: { encoding: 'utf8' },
+  glb: { encoding: 'base64' },
 };
 
 const SAFE_NAME = /[^A-Za-z0-9 _.-]/g;
@@ -47,26 +40,58 @@ function decodeUpload(body, importer) {
  * The heavy parsing runs here, on the user's machine, instead of in the
  * browser tab.
  */
-export async function importAsset(root, body) {
+/** Convert bytes in a worker thread, reporting progress; aborts on cancel. */
+export function convertInWorker(format, buffer, baseName, { progress = () => {}, signal } = {}) {
+  return new Promise((resolve, reject) => {
+    const bytes = new Uint8Array(buffer).slice();
+    const worker = new Worker(new URL('./import-worker.js', import.meta.url), {
+      workerData: { format, bytes, baseName },
+      transferList: [bytes.buffer],
+    });
+    let settled = false;
+    const done = (fn, value) => {
+      if (settled) return;
+      settled = true;
+      signal?.removeEventListener('abort', onAbort);
+      worker.terminate();
+      fn(value);
+    };
+    const onAbort = () => done(reject, new JobCancelled());
+    signal?.addEventListener('abort', onAbort);
+    worker.on('message', (msg) => {
+      if (msg.type === 'progress') progress(msg.fraction);
+      else if (msg.type === 'result') done(resolve, msg.result);
+      else if (msg.type === 'error') {
+        done(reject, PARSE_ERRORS.has(msg.name)
+          ? new HttpError(422, `Could not import ${format.toUpperCase()}: ${msg.message}`)
+          : new HttpError(500, 'Import failed'));
+      }
+    });
+    worker.on('error', () => done(reject, new HttpError(500, 'Import failed')));
+    worker.on('exit', () => done(reject, new HttpError(500, 'Import worker stopped unexpectedly')));
+  });
+}
+
+/**
+ * Convert an uploaded asset into .voxmesh files under Assets/Models.
+ * The heavy parsing runs here, on the user's machine, instead of in the
+ * browser tab.
+ */
+export async function importAsset(root, body, { progress = () => {}, signal, readUpload } = {}) {
   const format = String(body.format || '').toLowerCase();
   const importer = IMPORTERS[format];
   if (!importer) throw new HttpError(400, `Unsupported format "${format}"`);
   const base = safeBaseName(body.name);
-  const buffer = decodeUpload(body, importer);
-
-  let result;
-  try {
-    result = importer.convert(buffer, base);
-  } catch (err) {
-    if (err instanceof ObjParseError || err instanceof SceneFormatError || err?.name === 'GltfParseError') {
-      throw new HttpError(422, `Could not import ${format.toUpperCase()}: ${err.message}`);
-    }
-    throw err;
-  }
+  const buffer = body.uploadId !== undefined && readUpload ? await readUpload(body.uploadId) : decodeUpload(body, importer);
+  progress(0.02, 'Parsing');
+  const result = await convertInWorker(format, buffer, base, { progress: (f) => progress(0.05 + f * 0.75, 'Parsing'), signal });
+  checkCancelled(signal);
 
   const single = result.meshes.length === 1;
   const written = [];
   for (let i = 0; i < result.meshes.length; i++) {
+    checkCancelled(signal);
+    progress(0.8 + (0.2 * i) / result.meshes.length, 'Writing meshes');
     const mesh = validateMesh(result.meshes[i]);
     const meshName = safeBaseName(`${mesh.name || base}_${i}.x`);
     const rel = single ? `Assets/Models/${base}.voxmesh` : `Assets/Models/${base}/${meshName}.voxmesh`;
@@ -76,7 +101,12 @@ export async function importAsset(root, body) {
   return { ok: true, name: base, format, meshes: written, nodes: result.nodes || null };
 }
 
-/** POST /api/assets/import */
+/** POST /api/assets/import ({ async: true } runs it as a background job) */
 export function registerAssets(router, config) {
-  router.post('/api/assets/import', async ({ json }) => importAsset(config.project, await json()));
+  router.post('/api/assets/import', async ({ json }) => {
+    const body = await json();
+    return maybeAsync(config, body, 'import', `Import ${String(body.name || '').slice(0, 64)}`, (ctx) =>
+      importAsset(config.project, body, { ...ctx, readUpload: config.readUpload }),
+    );
+  });
 }

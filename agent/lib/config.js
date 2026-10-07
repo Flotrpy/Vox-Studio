@@ -20,6 +20,12 @@ Options:
   --project <dir>    Project folder. All file access is confined to it
                      (default ./${DEFAULT_PROJECT}, created if missing).
   --max-body <mb>    Largest accepted request body in MB (default ${DEFAULT_MAX_BODY / 1024 / 1024}).
+  --projects-root <dir>
+                     Folder for projects created or opened from the studio
+                     (default: the parent folder of --project).
+  --max-upload <mb>  Largest chunked upload in MB (default 512).
+  --new-token        Issue a new pairing token (browsers must pair again).
+  --no-persist       Do not remember the token between runs.
   --quiet            Do not log requests.
   -v, --version      Print the version and exit.
   -h, --help         Print this help and exit.
@@ -37,6 +43,10 @@ export function parseArgs(argv, cwd = process.cwd()) {
     project: path.resolve(cwd, DEFAULT_PROJECT),
     maxBody: DEFAULT_MAX_BODY,
     quiet: false,
+    projectsRoot: null,
+    maxUpload: 512 * 1024 * 1024,
+    newToken: false,
+    persistToken: true,
     help: false,
     version: false,
   };
@@ -74,6 +84,25 @@ export function parseArgs(argv, cwd = process.cwd()) {
         i++;
         break;
       }
+      case '--projects-root':
+        config.projectsRoot = path.resolve(cwd, takeValue(i, arg));
+        i++;
+        break;
+      case '--max-upload': {
+        const mb = Number(takeValue(i, arg));
+        if (!Number.isFinite(mb) || mb <= 0 || mb > 4096) {
+          throw new ConfigError('--max-upload must be between 0 and 4096 (MB)');
+        }
+        config.maxUpload = Math.floor(mb * 1024 * 1024);
+        i++;
+        break;
+      }
+      case '--new-token':
+        config.newToken = true;
+        break;
+      case '--no-persist':
+        config.persistToken = false;
+        break;
       case '--quiet':
         config.quiet = true;
         break;
@@ -89,5 +118,11 @@ export function parseArgs(argv, cwd = process.cwd()) {
         throw new ConfigError(`Unknown option: ${arg}`);
     }
   }
+  if (config.newToken && !config.persistToken) {
+    // --no-persist would leave the stored token untouched, so it would come
+    // back on the next normal start instead of being revoked.
+    throw new ConfigError('--new-token cannot be combined with --no-persist');
+  }
+  if (!config.projectsRoot) config.projectsRoot = path.dirname(config.project);
   return config;
 }

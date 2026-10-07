@@ -21,6 +21,10 @@ export class AgentClient extends Emitter {
     this.token = this.readToken();
     this.status = this.token ? 'connecting' : 'unpaired';
     this.info = null;
+    // Id of the project this tab has loaded. It changes only when the tab
+    // switches or follows a switch (bindProject), never from a health poll,
+    // so requests from a tab that missed a switch keep the old id.
+    this.projectId = null;
     this.timer = 0;
   }
 
@@ -32,7 +36,24 @@ export class AgentClient extends Emitter {
       window.history.replaceState(null, '', url);
       return match[1];
     }
-    return load('token', null, 'session');
+    // A remembered token (agent runs with a persistent token) lets the
+    // studio reconnect without the URL fragment after the agent restarts.
+    return load('token', null, 'session') || load('token', null, 'local');
+  }
+
+  /** Keep the token across browser restarts only if the agent persists it. */
+  rememberToken(persistent) {
+    if (persistent) save('token', this.token, 'local');
+    else remove('token', 'local');
+  }
+
+  projectHeader() {
+    return this.projectId ? { 'X-Vox-Project': this.projectId } : {};
+  }
+
+  /** Mark the agent's current project as the one this tab has loaded. */
+  bindProject(id) {
+    this.projectId = id || null;
   }
 
   get connected() {
@@ -56,6 +77,9 @@ export class AgentClient extends Emitter {
         method,
         headers: {
           'X-Vox-Token': this.token,
+          // Lets the agent refuse file requests meant for a project another
+          // tab has since switched away from.
+          ...this.projectHeader(),
           ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
         },
         body: body !== undefined ? JSON.stringify(body) : undefined,
@@ -78,7 +102,9 @@ export class AgentClient extends Emitter {
     if (res.status === 401) {
       this.setStatus('unpaired');
       remove('token', 'session');
+      remove('token', 'local');
     }
+    if (res.status === 409 && data?.error?.details?.code === 'project-changed') this.emit('project-mismatch');
     if (!res.ok) throw new AgentError(res.status, data?.error?.message || `Request failed (${res.status})`);
     return data;
   }
@@ -98,11 +124,139 @@ export class AgentClient extends Emitter {
     }
     try {
       const info = await this.get('/api/health');
+      if (this.info?.persistentToken !== info.persistentToken) this.rememberToken(!!info.persistentToken);
+      if (!this.projectId) this.bindProject(info.projectId);
       this.setStatus('connected', info);
+      this.openEvents();
+      // The agent moved to another project without this tab following
+      // (a missed event, or an agent restarted on another folder).
+      if (info.projectId && info.projectId !== this.projectId) this.emit('project-mismatch');
       return true;
     } catch (err) {
       if (err.status !== 401) this.setStatus('offline');
       return false;
+    }
+  }
+
+  /**
+   * Keep an authenticated event stream open and emit 'event' for each
+   * server-sent event ({ type, data }). Reconnects after drops.
+   */
+  async openEvents() {
+    if (this.streaming || !this.token) return;
+    this.streaming = true;
+    try {
+      const res = await fetch('/api/events', { headers: { 'X-Vox-Token': this.token }, cache: 'no-store', credentials: 'omit' });
+      if (!res.ok || !res.body) throw new Error(`status ${res.status}`);
+      const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
+      let buffer = '';
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += value;
+        let i;
+        while ((i = buffer.indexOf('\n\n')) >= 0) {
+          const block = buffer.slice(0, i);
+          buffer = buffer.slice(i + 2);
+          const type = /^event: (.*)$/m.exec(block)?.[1];
+          const data = /^data: (.*)$/m.exec(block)?.[1];
+          if (!type || data === undefined) continue;
+          try {
+            this.emit('event', { type, data: JSON.parse(data) });
+          } catch {
+            // Ignore malformed events.
+          }
+        }
+      }
+    } catch {
+      // Agent stopped or stream refused; the health poll reports status.
+    } finally {
+      this.streaming = false;
+      if (this.connected) setTimeout(() => this.openEvents(), 2000);
+    }
+  }
+
+  /**
+   * Start a background job ({ async: true }) and resolve with its result.
+   * Progress comes from 'job' events (or polling if the stream is down).
+   * Returns { promise, cancel }.
+   */
+  runJob(path, body, onProgress = () => {}) {
+    let jobId = null;
+    let cancelled = false;
+    const promise = (async () => {
+      const { jobId: id } = await this.post(path, { ...body, async: true });
+      jobId = id;
+      if (cancelled) await this.post('/api/jobs/cancel', { id });
+      return new Promise((resolve, reject) => {
+        let timer = 0;
+        const finish = (job) => {
+          off();
+          clearInterval(timer);
+          if (job.state === 'done') resolve(job.result);
+          else if (job.state === 'cancelled') reject(new AgentError(499, 'Cancelled'));
+          else reject(new AgentError(job.error?.status || 500, job.error?.message || 'Job failed'));
+        };
+        const handle = (job) => {
+          if (job.id !== id) return;
+          onProgress(job);
+          if (job.state !== 'running') finish(job);
+        };
+        const off = this.on('event', ({ type, data }) => type === 'job' && handle(data));
+        // Polling backs up the event stream (and catches missed events).
+        timer = setInterval(async () => {
+          try {
+            handle(await this.get(`/api/job?id=${encodeURIComponent(id)}`));
+          } catch (err) {
+            off();
+            clearInterval(timer);
+            reject(err);
+          }
+        }, 1000);
+      });
+    })();
+    return {
+      promise,
+      cancel: () => {
+        cancelled = true;
+        if (jobId) this.post('/api/jobs/cancel', { id: jobId }).catch(() => {});
+      },
+    };
+  }
+
+  /**
+   * Upload bytes in chunks; resolves with the upload id. Aborting `signal`
+   * (or any failure) cancels the upload on the agent so it frees its slot.
+   */
+  async upload(bytes, onProgress = () => {}, signal) {
+    if (signal?.aborted) throw new AgentError(499, 'Cancelled');
+    const { uploadId, chunkSize } = await this.post('/api/uploads/start', { size: bytes.byteLength });
+    try {
+      await this.sendChunks(uploadId, chunkSize, bytes, onProgress, signal);
+      await this.post('/api/uploads/finish', { id: uploadId });
+    } catch (err) {
+      await this.post('/api/uploads/cancel', { id: uploadId }).catch(() => {});
+      throw signal?.aborted ? new AgentError(499, 'Cancelled') : err;
+    }
+    return uploadId;
+  }
+
+  async sendChunks(uploadId, chunkSize, bytes, onProgress, signal) {
+    for (let offset = 0; offset < bytes.byteLength; offset += chunkSize) {
+      if (signal?.aborted) throw new AgentError(499, 'Cancelled');
+      const chunk = bytes.subarray(offset, Math.min(bytes.byteLength, offset + chunkSize));
+      const res = await fetch(`/api/uploads/chunk?id=${uploadId}&offset=${offset}`, {
+        method: 'POST',
+        headers: { 'X-Vox-Token': this.token, ...this.projectHeader(), 'Content-Type': 'application/octet-stream' },
+        body: chunk,
+        credentials: 'omit',
+        signal,
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new AgentError(res.status, data?.error?.message || 'Upload failed');
+      }
+      onProgress((offset + chunk.byteLength) / bytes.byteLength);
     }
   }
 

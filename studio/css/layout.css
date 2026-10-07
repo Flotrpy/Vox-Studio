@@ -145,3 +145,41 @@ body.playing .main-toolbar {
   color: var(--text-disabled);
   white-space: nowrap;
 }
+
+.statusbar .task {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 45%;
+  color: var(--text);
+}
+
+.statusbar .task-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.statusbar .task-bar {
+  flex: none;
+  width: 120px;
+  height: 8px;
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+}
+
+.statusbar .task-fill {
+  display: block;
+  height: 100%;
+  background: var(--meter);
+}
+
+.statusbar .task-cancel {
+  display: flex;
+  color: var(--icon);
+}
+
+.statusbar .task-cancel .icon {
+  width: 12px;
+  height: 12px;
+}

@@ -9,6 +9,13 @@ import { load, save } from './core/storage.js';
 
 const enc = encodeURIComponent;
 
+/** Base64 for large byte arrays without blowing the call stack. */
+export function bytesToBase64(bytes) {
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(binary);
+}
+
 export class AgentProject {
   constructor(agent) {
     this.agent = agent;
@@ -53,6 +60,27 @@ export class AgentProject {
 
   importAsset(name, format, data, encoding = 'utf8') {
     return this.agent.post('/api/assets/import', { name, format, data, encoding });
+  }
+
+  /**
+   * Import raw file bytes as a background job. Files above 3 MB go up in
+   * chunks first, so there is no request size limit in practice.
+   */
+  async importBytes(name, format, bytes, task) {
+    let body;
+    if (bytes.byteLength > 3 * 1024 * 1024) {
+      // Cancel works during the upload too, not only once the job runs.
+      const controller = new AbortController();
+      if (task) task.onCancel = () => controller.abort();
+      const uploadId = await this.agent.upload(bytes, (p) => task?.update(p * 0.4, 'Uploading'), controller.signal);
+      body = { name, format, uploadId };
+    } else {
+      body = { name, format, data: bytesToBase64(bytes), encoding: 'base64' };
+    }
+    const base = body.uploadId ? 0.4 : 0;
+    const job = this.agent.runJob('/api/assets/import', body, (j) => task?.update(base + j.progress * (1 - base), j.message || 'Converting'));
+    if (task) task.onCancel = job.cancel;
+    return job.promise;
   }
 
   mkdir(path) {
@@ -147,12 +175,18 @@ export class LocalProject {
     return parseMeshFile(file.content);
   }
 
+  async importBytes(name, format, bytes) {
+    if (format === 'obj') return this.importAsset(name, format, new TextDecoder().decode(bytes));
+    return this.importAsset(name, format, bytes, 'bytes');
+  }
+
   async importAsset(name, format, data, encoding = 'utf8') {
     const base = name.replace(/\.[^.]*$/, '').replace(/[^A-Za-z0-9 _.-]/g, '_').slice(0, 64) || 'Model';
     let result;
     if (format === 'obj') result = parseObj(data, base);
     else if (format === 'gltf' || format === 'glb') {
       const input = encoding === 'base64' ? Uint8Array.from(atob(data), (c) => c.charCodeAt(0)) : data;
+      // encoding 'bytes': data is already a Uint8Array.
       result = parseGltf(input, base);
     } else throw new Error(`Unsupported format "${format}"`);
     const { meshes } = result;

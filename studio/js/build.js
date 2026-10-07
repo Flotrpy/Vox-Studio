@@ -78,10 +78,14 @@ export class BuildCommands {
     try {
       editor.log.info('Building...');
       const started = performance.now();
-      const res = await app.agent.post('/api/export', {
-        scene: editor.scene.toData(),
-        title: title || this.settings.title || editor.scene.name,
-        folder: this.folderName(),
+      const res = await editor.tasks.run('Building', (task) => {
+        const job = app.agent.runJob('/api/export', {
+          scene: editor.scene.toData(),
+          title: title || this.settings.title || editor.scene.name,
+          folder: this.folderName(),
+        }, (j) => task.update(j.progress, j.message));
+        task.onCancel = job.cancel;
+        return job.promise;
       });
       const kb = Math.round(res.bytes / 1024);
       editor.log.info(`Build succeeded: ${res.path} (${kb} KB, ${Math.round(performance.now() - started)} ms)`);
@@ -92,7 +96,8 @@ export class BuildCommands {
       }
     } catch (err) {
       win?.close();
-      editor.log.error('Build failed', err.message);
+      if (err.status === 499) editor.log.warn('Build cancelled');
+      else editor.log.error('Build failed', err.message);
     }
   }
 }

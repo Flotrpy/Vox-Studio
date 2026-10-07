@@ -224,7 +224,7 @@ function convertMesh(json, buffers, mesh, index) {
  * (.gltf JSON). Returns { meshes, nodes } where nodes is a tree:
  * { name, mesh (index into meshes or null), transform, children }.
  */
-export function parseGltf(input, fallbackName = 'Model') {
+export function parseGltf(input, fallbackName = 'Model', onProgress = null) {
   let json;
   let bin = null;
   try {
@@ -246,6 +246,7 @@ export function parseGltf(input, fallbackName = 'Model') {
   const meshes = [];
   const meshMap = new Map();
   (json.meshes || []).forEach((mesh, i) => {
+    onProgress?.(i / Math.max(1, json.meshes.length));
     const converted = convertMesh(json, buffers, mesh, i);
     if (converted) {
       meshMap.set(i, meshes.length);

@@ -6,6 +6,7 @@ import { SceneModel, newId } from './scene-model.js';
 import { Selection } from './selection.js';
 import { History } from './history.js';
 import { LogStore } from './log.js';
+import { TaskTracker } from './tasks.js';
 import { CREATE_KINDS, defaultSceneEntities } from './primitives.js';
 import {
   createEntitiesCommand,
@@ -40,6 +41,7 @@ export class Editor extends Emitter {
     this.selection = new Selection();
     this.history = new History();
     this.log = new LogStore();
+    this.tasks = new TaskTracker();
     this.tool = 'move';
     this.pivotMode = 'pivot';
     this.space = 'global';

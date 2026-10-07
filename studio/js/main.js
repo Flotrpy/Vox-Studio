@@ -30,6 +30,7 @@ import { Hotkeys } from './hotkeys.js';
 import { VERSION } from './version.js';
 import { PlayMode } from './play-mode.js';
 import { BuildCommands } from './build.js';
+import { ProjectSwitcher } from './projects.js';
 import { applyTheme, showPreferences } from './preferences.js';
 import { icon } from './ui/icons.js';
 
@@ -80,6 +81,7 @@ class App {
     this.extensions.playItems.push(() => this.play.menuItems());
     this.builds = new BuildCommands(this);
     this.extensions.fileItems.push(() => this.builds.menuItems());
+    this.projects = new ProjectSwitcher(this);
     this.beforeRender = (dt) => this.play.tick(dt);
 
     this.dock.on('change', (tree) => {
@@ -290,6 +292,21 @@ class App {
   }
 
   bindAgent() {
+    let refreshTimer = 0;
+    let changed = new Set();
+    this.agent.on('event', ({ type, data }) => {
+      if (type === 'files') {
+        // Batch bursts (e.g. a build writing many files) into one refresh.
+        for (const p of data.paths) changed.add(p);
+        clearTimeout(refreshTimer);
+        refreshTimer = setTimeout(() => {
+          const paths = [...changed];
+          changed = new Set();
+          this.files.onFilesChanged(paths);
+        }, 250);
+      }
+      this.editor.emit('agent-event', { type, data });
+    });
     this.agent.on('status', (status) => {
       this.toolbar.setAgentStatus(status, this.agent.info);
       const wasAgent = this.editor.project.kind === 'agent';

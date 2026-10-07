@@ -25,6 +25,13 @@ jobs on behalf of the editor:
 | `POST /api/folder`         | Create a folder under `Assets/` or `Builds/`          |
 | `POST /api/rename`         | Rename an asset under `Assets/` or `Builds/`          |
 | `POST /api/delete`         | Delete an asset file or an empty folder               |
+| `GET  /api/events`         | Server-sent events: file changes, job progress        |
+| `GET  /api/jobs`, `/api/job?id=` | Background job list and status                  |
+| `POST /api/jobs/cancel`    | Cancel a background job                               |
+| `POST /api/uploads/*`      | Chunked upload: start, chunk, finish, cancel          |
+| `GET  /api/projects`       | Projects under the projects root and recent projects  |
+| `POST /api/projects/open`  | Switch to a listed project (by opaque id)             |
+| `POST /api/projects/create`| Create a project inside the projects root             |
 | `POST /api/export`         | Write a standalone build to `Builds/<Name>/play.html` |
 | `POST /api/build/ticket`   | Issue a one-time link to open a build                 |
 | `GET  /play/<ticket>`      | Serve that build once (the ticket is the credential)  |
@@ -46,11 +53,17 @@ explicitly registered jobs with their own input validation.
 Any page you open in your browser can try to send requests to
 `http://127.0.0.1:8787`.
 
-- **Pairing token.** A 256-bit random token is generated each time the agent
-  starts and printed in the console. The studio receives it through the URL
+- **Pairing token.** A 256-bit random token is printed in the console. By
+  default it is kept in the user's config folder (`pairing.json`, file mode
+  0600, outside any project) so a browser that paired once can reconnect
+  after the agent restarts; the studio then keeps it in `localStorage`
+  (`vox:token`) for the agent's own origin only. `--new-token` issues a new
+  token and so revokes every paired browser; `--no-persist` restores the
+  1.0 behavior of a new token on every run that is never written to disk. The studio receives it through the URL
   fragment (`#token=...`), which browsers never send to servers or put in the
-  Referer header. The studio stores it in `sessionStorage` and removes it from
-  the address bar. Every `/api/` request must carry it in the `X-Vox-Token`
+  Referer header. The studio stores it in `sessionStorage` (and in
+  `localStorage` when the agent persists it) and removes it from the
+  address bar. Every `/api/` request must carry it in the `X-Vox-Token`
   header. Tokens are compared in constant time.
 - **No CORS.** The agent never sends `Access-Control-Allow-*` headers, so a
   cross-origin page cannot read responses, and the custom token header forces
@@ -94,7 +107,22 @@ cannot be changed through the API. The static file server uses the same
 guard and only serves known file types from the `studio/` and `shared/`
 folders.
 
-### 5. Malicious request content
+### 5. Project switching
+
+The studio can switch the agent to another project, but only to one the
+agent lists itself: folders directly inside the projects root
+(`--projects-root`, default the parent of `--project`) that contain
+`.vox/ProjectSettings.json`, and projects opened before (kept in
+`recent-projects.json` in the user config folder, written only by the
+agent). The studio sends an opaque id, never a path, so it cannot point the
+agent at an arbitrary folder. New projects are created inside the projects
+root and their names are limited to letters, digits, spaces, `_` and `-`.
+After a switch, every file job is confined to the new project folder.
+The studio sends the id of the project it has open in `X-Vox-Project`, and
+the agent refuses file requests (409) from a tab that still has the previous
+project open, so a stale tab cannot overwrite a scene in the new project.
+
+### 6. Malicious request content
 
 - Bodies are capped (16 MB by default, `--max-body`), checked against
   `Content-Length` up front and counted while streaming. URLs over 4 KB and
@@ -113,8 +141,21 @@ folders.
   file names are reduced to safe base names.
 - Benchmarks run a fixed workload in a worker thread with a time cap, a
   memory cap and one-at-a-time concurrency.
+- Model conversion runs in a worker thread, so a huge or hostile file
+  cannot stall the server, and cancelling a job terminates the worker.
+- Chunked uploads (for files above the JSON body cap) are limited by
+  `--max-upload` (512 MB by default), accept only
+  `application/octet-stream` chunks of at most 8 MB at the expected offset,
+  one at a time, and are stored under `.vox/uploads/` with random 144-bit
+  ids chosen by the agent. An upload can be read once (by an import) and is
+  then deleted; unfinished uploads expire after an hour and are removed at
+  startup. If `.vox` or `.vox/uploads` is a link, uploads are refused and
+  the startup cleanup is skipped, so it never deletes files elsewhere.
+- The event stream needs the token like every API request, is capped at 16
+  open connections, and only reports project-relative paths outside hidden
+  folders.
 
-### 6. Builds
+### 7. Builds
 
 - The export job only writes `Builds/<Name>/play.html`; the folder name is
   reduced to letters, digits, spaces, `_` and `-`.
@@ -129,7 +170,7 @@ folders.
   random 192-bit ticket that is valid for 60 seconds and for one request,
   and only for an existing `Builds/<name>/play.html`.
 
-### 7. Information leaks
+### 8. Information leaks
 
 The token is never written to request logs. Error responses carry short,
 fixed messages without stack traces or absolute paths. Responses include

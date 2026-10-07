@@ -138,7 +138,8 @@ export class SceneFiles {
   }
 
   /** Open the last scene, or the project's main scene, at startup. */
-  async openStartScene() {
+  async openStartScene({ forget = false } = {}) {
+    if (forget) save(LAST_SCENE_KEY, null);
     const candidates = [load(LAST_SCENE_KEY, null), DEFAULT_SCENE_PATH].filter(Boolean);
     for (const path of candidates) {
       if (!(await this.editor.project.exists(path))) continue;
@@ -151,6 +152,7 @@ export class SceneFiles {
         // Try the next candidate.
       }
     }
+    if (forget) this.editor.loadScene(newSceneData('Main'));
     this.scene.path = DEFAULT_SCENE_PATH;
     this.scene.name = 'Main';
     this.editor.emit('scene-loaded', { path: DEFAULT_SCENE_PATH });
@@ -177,7 +179,33 @@ export class SceneFiles {
     return this.writeTo(`${dir}/${clean}${SCENE_EXTENSION}`);
   }
 
+  /**
+   * React to files changed on disk (from the agent's watcher): refresh the
+   * Project panel and reload the open scene if it changed and has no unsaved
+   * edits here.
+   */
+  async onFilesChanged(paths) {
+    this.editor.emit('project-refresh');
+    const path = this.scene.path;
+    if (!path || !paths.includes(path) || this.editor.isPlaying) return;
+    if (Date.now() - (this.lastWrite || 0) < 1500) return; // our own save
+    if (this.scene.dirty) {
+      this.editor.log.warn(`${path} changed on disk. Save to overwrite it, or reopen it to load the new version.`);
+      return;
+    }
+    try {
+      const data = await this.editor.project.readScene(path);
+      const selection = this.editor.selection.ids.slice();
+      this.editor.loadScene(data, path);
+      this.editor.selection.set(selection.filter((id) => this.scene.has(id)));
+      this.editor.log.info(`Reloaded ${path} (changed on disk)`);
+    } catch (err) {
+      this.editor.log.error(`Could not reload ${path}`, err.message);
+    }
+  }
+
   async writeTo(path) {
+    this.lastWrite = Date.now();
     try {
       const res = await this.editor.project.writeScene(path, this.scene.toData());
       this.scene.path = res.path || path;
@@ -249,16 +277,14 @@ export class SceneFiles {
       }
       try {
         this.editor.log.info(`Importing ${file.name}...`);
-        let result;
-        if (ext === 'glb') {
-          const dataUrl = await readFileAs(file, 'dataurl');
-          result = await this.editor.project.importAsset(file.name, ext, dataUrl.slice(dataUrl.indexOf(',') + 1), 'base64');
-        } else {
-          result = await this.editor.project.importAsset(file.name, ext, await readFileAs(file, 'text'));
-        }
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        const result = await this.editor.tasks.run(`Importing ${file.name}`, (task) =>
+          this.editor.project.importBytes(file.name, ext, bytes, task),
+        );
         this.addImported(result);
       } catch (err) {
-        this.editor.log.error(`Import failed: ${file.name}`, err.message);
+        if (err.status === 499) this.editor.log.warn(`Import cancelled: ${file.name}`);
+        else this.editor.log.error(`Import failed: ${file.name}`, err.message);
       }
     }
     this.editor.emit('project-refresh');

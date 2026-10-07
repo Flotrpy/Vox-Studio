@@ -2,7 +2,12 @@
 // runs it on large files so the browser does not have to) and the studio
 // (fallback when no agent is connected). Dependency-free.
 
-export class ObjParseError extends Error {}
+export class ObjParseError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'ObjParseError';
+  }
+}
 
 const MAX_VERTICES = 2_000_000;
 
@@ -13,7 +18,7 @@ const MAX_VERTICES = 2_000_000;
  *
  * Returns { meshes: [{ name, positions, normals, uvs, indices }] }.
  */
-export function parseObj(text, fallbackName = 'Mesh') {
+export function parseObj(text, fallbackName = 'Mesh', onProgress = null) {
   if (typeof text !== 'string') throw new ObjParseError('OBJ input must be text');
 
   const v = [];
@@ -72,6 +77,7 @@ export function parseObj(text, fallbackName = 'Mesh') {
 
   const lines = text.split(/\r?\n/);
   for (let li = 0; li < lines.length; li++) {
+    if (onProgress && li % 50000 === 0) onProgress(li / lines.length);
     let line = lines[li];
     const hash = line.indexOf('#');
     if (hash >= 0) line = line.slice(0, hash);
