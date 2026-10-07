@@ -3,6 +3,7 @@ import { parseArgs, ConfigError, HELP_TEXT } from './lib/config.js';
 import { PRODUCT, VERSION } from './lib/version.js';
 import { loadPairingToken } from './lib/pairing.js';
 import { userConfigDir } from './lib/user-config.js';
+import { rememberProject } from './lib/jobs/projects.js';
 import { ensureProject } from './lib/project.js';
 import { createAgentServer } from './lib/server.js';
 
@@ -79,6 +80,7 @@ async function main() {
     }
     throw err;
   }
+  await rememberProject(agent.config, config.project).catch(() => {});
   printBanner(agent.config.port, pairing, config.project);
 
   let stopping = false;
