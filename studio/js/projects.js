@@ -12,7 +12,7 @@ export class ProjectSwitcher {
     this.editor = app.editor;
     app.agent.on('event', ({ type, data }) => {
       // Another tab switched projects: follow it.
-      if (type === 'project' && data.name !== this.app.agent.info?.project) this.afterSwitch(data);
+      if (type === 'project' && !this.switching && data.name !== this.app.agent.info?.project) this.afterSwitch(data);
     });
   }
 
@@ -92,21 +92,27 @@ export class ProjectSwitcher {
 
   async open(id) {
     if (!(await this.confirmLeave())) return;
+    this.switching = true;
     try {
       const res = await this.app.agent.post('/api/projects/open', { id });
       await this.afterSwitch(res);
     } catch (err) {
       this.editor.log.error('Could not open project', err.message);
+    } finally {
+      this.switching = false;
     }
   }
 
   async create(name) {
     if (!(await this.confirmLeave())) return;
+    this.switching = true;
     try {
       const res = await this.app.agent.post('/api/projects/create', { name });
       await this.afterSwitch(res);
     } catch (err) {
       this.editor.log.error('Could not create project', err.message);
+    } finally {
+      this.switching = false;
     }
   }
 
