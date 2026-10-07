@@ -8,6 +8,7 @@ import { createStaticHandler } from './static.js';
 import { createApi } from './api.js';
 import { redeemTicket } from './jobs/export.js';
 import { EventHub, STREAMING } from './events.js';
+import { JobManager } from './job-manager.js';
 import { watchProject } from './watcher.js';
 import fs from 'node:fs/promises';
 
@@ -36,6 +37,7 @@ export function createAgentServer(options) {
   };
 
   config.events = new EventHub();
+  config.jobs = new JobManager(config.events);
   let watcher = null;
   /** (Re)start watching the current project folder. */
   config.watch = () => {
