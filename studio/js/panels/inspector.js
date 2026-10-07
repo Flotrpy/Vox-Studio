@@ -41,6 +41,7 @@ const COMPONENT_ICONS = {
   Rigidbody: 'rigidbody',
   BoxCollider: 'collider',
   SphereCollider: 'collider',
+  MeshCollider: 'collider',
   Script: 'script',
 };
 
@@ -49,6 +50,7 @@ const DISPLAY_NAMES = {
   MeshRenderer: 'Mesh Renderer',
   BoxCollider: 'Box Collider',
   SphereCollider: 'Sphere Collider',
+  MeshCollider: 'Mesh Collider',
 };
 
 /** Fields shown only in some configurations. */

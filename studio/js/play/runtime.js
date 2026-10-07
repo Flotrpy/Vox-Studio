@@ -99,31 +99,86 @@ export class PlayRuntime {
   createBody(entity) {
     const box = component(entity, 'BoxCollider');
     const sphere = component(entity, 'SphereCollider');
+    const meshCollider = box || sphere ? null : component(entity, 'MeshCollider');
     const rb = component(entity, 'Rigidbody');
-    if (!box && !sphere && !rb) return;
+    if (!box && !sphere && !meshCollider && !rb) return;
     const object = this.builder.object(entity.id);
     if (!object) return;
-    const collider = box || sphere;
-    const center = new THREE.Vector3(...(collider ? collider.center : [0, 0, 0]));
+    const dynamic = !!rb && !rb.isKinematic;
+    const collider = box || sphere || meshCollider;
+    const center = new THREE.Vector3(...(box || sphere ? collider.center : [0, 0, 0]));
     object.matrixWorld.decompose(tmpV, tmpQ, tmpS);
     const scale = [Math.abs(tmpS.x), Math.abs(tmpS.y), Math.abs(tmpS.z)];
+    let shape = sphere && !box ? 'sphere' : 'box';
+    let halfExtents = box ? box.size.map((s, i) => (s * scale[i]) / 2) : [0.5, 0.5, 0.5];
+    let triangles = null;
+    let hasCollider = !!collider;
+    if (meshCollider) {
+      triangles = this.meshTriangles(entity, object);
+      if (!triangles) {
+        this.log('warning', `${entity.name}: Mesh Collider has no mesh`, 'Add a Mesh Filter with a mesh, or use a Box or Sphere Collider.');
+        hasCollider = false;
+      } else if (dynamic) {
+        // Moving triangle meshes are not simulated; use the mesh bounds instead.
+        this.log('warning', `${entity.name}: Mesh Collider on a moving Rigidbody collides as a box`, 'Mesh Colliders are exact only on static or kinematic objects.');
+        const min = [Infinity, Infinity, Infinity];
+        const max = [-Infinity, -Infinity, -Infinity];
+        for (let i = 0; i < triangles.length; i++) {
+          const k = i % 3;
+          min[k] = Math.min(min[k], triangles[i]);
+          max[k] = Math.max(max[k], triangles[i]);
+        }
+        halfExtents = [0, 1, 2].map((k) => (max[k] - min[k]) / 2);
+        object.worldToLocal(center.set((min[0] + max[0]) / 2, (min[1] + max[1]) / 2, (min[2] + max[2]) / 2));
+        triangles = null;
+      } else {
+        shape = 'mesh';
+      }
+    }
     const position = object.localToWorld(center.clone()).toArray();
     const body = this.world.add({
       id: entity.id,
-      shape: sphere && !box ? 'sphere' : 'box',
+      shape,
       position,
-      halfExtents: box ? box.size.map((s, i) => (s * scale[i]) / 2) : [0.5, 0.5, 0.5],
+      halfExtents,
       radius: sphere ? sphere.radius * Math.max(...scale) : 0.5,
-      hasCollider: !!collider,
+      triangles: triangles || undefined,
+      hasCollider,
       isTrigger: !!collider?.isTrigger,
-      dynamic: !!rb && !rb.isKinematic,
+      dynamic,
       mass: rb?.mass ?? 1,
       useGravity: rb?.useGravity ?? false,
       drag: rb?.drag ?? 0,
       bounciness: rb?.bounciness ?? 0,
       friction: rb?.friction ?? 0.4,
     });
-    this.bodies.set(entity.id, { body, center, entity, written: entity.transform.position.slice() });
+    this.bodies.set(entity.id, {
+      body,
+      center,
+      entity,
+      written: entity.transform.position.slice(),
+      matrix: shape === 'mesh' ? object.matrixWorld.clone() : null,
+    });
+  }
+
+  /** World-space triangles (9 numbers each) of an entity's Mesh Filter mesh, or null. */
+  meshTriangles(entity, object) {
+    const filter = component(entity, 'MeshFilter');
+    const geometry = filter ? this.builder.geometryFor(filter.mesh) : null;
+    const positions = geometry?.getAttribute('position');
+    if (!positions) return null;
+    const index = geometry.getIndex();
+    const total = index ? index.count : positions.count;
+    const count = total - (total % 3);
+    if (count < 3) return null;
+    const out = new Float64Array(count * 3);
+    for (let i = 0; i < count; i++) {
+      tmpV.fromBufferAttribute(positions, index ? index.getX(i) : i).applyMatrix4(object.matrixWorld);
+      out[i * 3] = tmpV.x;
+      out[i * 3 + 1] = tmpV.y;
+      out[i * 3 + 2] = tmpV.z;
+    }
+    return out;
   }
 
   /** Static/kinematic bodies follow their transforms; moved dynamic bodies teleport. */
@@ -136,6 +191,12 @@ export class PlayRuntime {
       if (!body.dynamic || moved) {
         body.position = object.localToWorld(center.clone()).toArray();
         info.written = entity.transform.position.slice();
+      }
+      // Moved, rotated or rescaled mesh colliders get fresh triangles.
+      if (info.matrix && !info.matrix.equals(object.matrixWorld)) {
+        info.matrix.copy(object.matrixWorld);
+        const triangles = this.meshTriangles(entity, object);
+        if (triangles) this.world.setTriangles(body, triangles);
       }
       if (!this.activeInHierarchy(entity)) body.hasCollider = false;
     }
