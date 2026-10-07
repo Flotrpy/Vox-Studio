@@ -127,3 +127,46 @@ canvas:focus-visible {
   clip: rect(0 0 0 0);
   white-space: nowrap;
 }
+
+/* Touch: gestures on canvases, splitters and drag handles are handled in
+   script, so the browser must not scroll or zoom the page for them. */
+canvas,
+.dock-splitter,
+.dock-tab,
+.console-splitter,
+.project-splitter,
+.scrub,
+.slider,
+.rect-tool {
+  touch-action: none;
+}
+
+/* Bigger hit targets on touch screens. */
+@media (pointer: coarse) {
+  :root {
+    --row-height: 26px;
+    --field-height: 24px;
+    --tab-height: 28px;
+    --panel-toolbar-height: 30px;
+    --menubar-height: 30px;
+    --main-toolbar-height: 40px;
+  }
+
+  .menu-item {
+    height: 30px;
+  }
+
+  .tool {
+    min-width: 34px;
+    height: 30px;
+  }
+
+  .tb-btn {
+    height: 26px;
+  }
+
+  .check {
+    width: 20px;
+    height: 20px;
+  }
+}
