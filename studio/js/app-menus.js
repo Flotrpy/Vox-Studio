@@ -15,6 +15,7 @@ export function buildMenus(app) {
   const editing = () => !editor.isPlaying;
 
   const file = () => [
+    ...app.projects.menuItems(),
     { label: 'New Scene', shortcut: 'Ctrl+N', disabled: !editing(), action: () => files.newScene() },
     { label: 'Open Scene...', shortcut: 'Ctrl+O', disabled: !editing(), action: () => app.openSceneDialog() },
     { separator: true },

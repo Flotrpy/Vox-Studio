@@ -30,6 +30,7 @@ import { Hotkeys } from './hotkeys.js';
 import { VERSION } from './version.js';
 import { PlayMode } from './play-mode.js';
 import { BuildCommands } from './build.js';
+import { ProjectSwitcher } from './projects.js';
 import { applyTheme, showPreferences } from './preferences.js';
 import { icon } from './ui/icons.js';
 
@@ -80,6 +81,7 @@ class App {
     this.extensions.playItems.push(() => this.play.menuItems());
     this.builds = new BuildCommands(this);
     this.extensions.fileItems.push(() => this.builds.menuItems());
+    this.projects = new ProjectSwitcher(this);
     this.beforeRender = (dt) => this.play.tick(dt);
 
     this.dock.on('change', (tree) => {

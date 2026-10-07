@@ -138,7 +138,8 @@ export class SceneFiles {
   }
 
   /** Open the last scene, or the project's main scene, at startup. */
-  async openStartScene() {
+  async openStartScene({ forget = false } = {}) {
+    if (forget) save(LAST_SCENE_KEY, null);
     const candidates = [load(LAST_SCENE_KEY, null), DEFAULT_SCENE_PATH].filter(Boolean);
     for (const path of candidates) {
       if (!(await this.editor.project.exists(path))) continue;
@@ -151,6 +152,7 @@ export class SceneFiles {
         // Try the next candidate.
       }
     }
+    if (forget) this.editor.loadScene(newSceneData('Main'));
     this.scene.path = DEFAULT_SCENE_PATH;
     this.scene.name = 'Main';
     this.editor.emit('scene-loaded', { path: DEFAULT_SCENE_PATH });
