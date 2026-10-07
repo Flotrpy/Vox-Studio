@@ -7,6 +7,8 @@ import { BIND_ADDRESS, checkHost, checkOrigin, checkToken } from './security.js'
 import { createStaticHandler } from './static.js';
 import { createApi } from './api.js';
 import { redeemTicket } from './jobs/export.js';
+import { EventHub, STREAMING } from './events.js';
+import { watchProject } from './watcher.js';
 import fs from 'node:fs/promises';
 
 const MAX_URL_LENGTH = 4096;
@@ -33,6 +35,15 @@ export function createAgentServer(options) {
     log: options.log || (() => {}),
   };
 
+  config.events = new EventHub();
+  let watcher = null;
+  /** (Re)start watching the current project folder. */
+  config.watch = () => {
+    watcher?.close();
+    watcher = watchProject(config.project, (paths) => config.events.broadcast('files', { paths }));
+  };
+  if (options.watch !== false) config.watch();
+
   const router = createApi(config);
   const serveStatic = createStaticHandler(
     { '/': config.studioDir, '/shared/': config.sharedDir },
@@ -58,6 +69,7 @@ export function createAgentServer(options) {
         json: () => readJson(req, config.maxBody),
       };
       const result = await handler(ctx);
+      if (result === STREAMING) return;
       if (!res.writableEnded) sendJson(res, 200, result ?? { ok: true });
       return;
     }
@@ -119,6 +131,8 @@ export function createAgentServer(options) {
       });
     },
     close() {
+      watcher?.close();
+      config.events.close();
       return new Promise((resolve) => {
         server.close(() => resolve());
         server.closeAllConnections?.();

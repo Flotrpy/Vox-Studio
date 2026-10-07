@@ -1,5 +1,5 @@
 import { Router } from './router.js';
-import { registerHealth } from './jobs/health.js';
+import { registerHealth, registerEvents } from './jobs/health.js';
 import { registerSystem } from './jobs/system.js';
 import { registerFiles } from './jobs/files.js';
 import { registerScenes } from './jobs/scenes.js';
@@ -15,6 +15,7 @@ import { registerExport } from './jobs/export.js';
 export function createApi(config) {
   const router = new Router();
   registerHealth(router, config);
+  registerEvents(router, config);
   registerSystem(router, config);
   registerFiles(router, config);
   registerScenes(router, config);

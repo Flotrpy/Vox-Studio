@@ -11,3 +11,8 @@ export function registerHealth(router, config) {
     persistentToken: config.persistentToken,
   }));
 }
+
+/** GET /api/events: server-sent events for file changes and job progress. */
+export function registerEvents(router, config) {
+  router.get('/api/events', ({ req, res }) => config.events.attach(req, res));
+}
