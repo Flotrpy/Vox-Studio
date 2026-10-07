@@ -21,6 +21,10 @@ export class AgentClient extends Emitter {
     this.token = this.readToken();
     this.status = this.token ? 'connecting' : 'unpaired';
     this.info = null;
+    // Id of the project this tab has loaded. It changes only when the tab
+    // switches or follows a switch (bindProject), never from a health poll,
+    // so requests from a tab that missed a switch keep the old id.
+    this.projectId = null;
     this.timer = 0;
   }
 
@@ -41,6 +45,15 @@ export class AgentClient extends Emitter {
   rememberToken(persistent) {
     if (persistent) save('token', this.token, 'local');
     else remove('token', 'local');
+  }
+
+  projectHeader() {
+    return this.projectId ? { 'X-Vox-Project': this.projectId } : {};
+  }
+
+  /** Mark the agent's current project as the one this tab has loaded. */
+  bindProject(id) {
+    this.projectId = id || null;
   }
 
   get connected() {
@@ -66,7 +79,7 @@ export class AgentClient extends Emitter {
           'X-Vox-Token': this.token,
           // Lets the agent refuse file requests meant for a project another
           // tab has since switched away from.
-          ...(this.info?.projectId ? { 'X-Vox-Project': this.info.projectId } : {}),
+          ...this.projectHeader(),
           ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
         },
         body: body !== undefined ? JSON.stringify(body) : undefined,
@@ -112,8 +125,12 @@ export class AgentClient extends Emitter {
     try {
       const info = await this.get('/api/health');
       if (this.info?.persistentToken !== info.persistentToken) this.rememberToken(!!info.persistentToken);
+      if (!this.projectId) this.bindProject(info.projectId);
       this.setStatus('connected', info);
       this.openEvents();
+      // The agent moved to another project without this tab following
+      // (a missed event, or an agent restarted on another folder).
+      if (info.projectId && info.projectId !== this.projectId) this.emit('project-mismatch');
       return true;
     } catch (err) {
       if (err.status !== 401) this.setStatus('offline');
@@ -214,7 +231,7 @@ export class AgentClient extends Emitter {
       const chunk = bytes.subarray(offset, Math.min(bytes.byteLength, offset + chunkSize));
       const res = await fetch(`/api/uploads/chunk?id=${uploadId}&offset=${offset}`, {
         method: 'POST',
-        headers: { 'X-Vox-Token': this.token, 'Content-Type': 'application/octet-stream' },
+        headers: { 'X-Vox-Token': this.token, ...this.projectHeader(), 'Content-Type': 'application/octet-stream' },
         body: chunk,
         credentials: 'omit',
       });

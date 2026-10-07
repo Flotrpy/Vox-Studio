@@ -27,6 +27,7 @@ const PROJECT_FREE = new Set([
   '/api/jobs',
   '/api/job',
   '/api/jobs/cancel',
+  '/api/uploads/cancel',
   '/api/projects',
   '/api/projects/open',
   '/api/projects/create',
@@ -100,7 +101,13 @@ export function createAgentServer(options) {
         res,
         query: url.searchParams,
         config,
-        json: () => readJson(req, config.maxBody),
+        // Check again once the body has arrived: another tab may have
+        // switched projects while it was streaming.
+        json: async () => {
+          const body = await readJson(req, config.maxBody);
+          checkProject(req, url.pathname, config.project);
+          return body;
+        },
       };
       const result = await handler(ctx);
       if (result === STREAMING) return;

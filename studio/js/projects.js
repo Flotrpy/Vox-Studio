@@ -12,7 +12,7 @@ export class ProjectSwitcher {
     this.editor = app.editor;
     app.agent.on('event', ({ type, data }) => {
       // Another tab switched projects: follow it.
-      if (type === 'project' && data.id !== this.app.agent.info?.projectId) this.follow();
+      if (type === 'project' && data.id !== this.app.agent.projectId) this.follow();
     });
     // A request was refused because the agent is on another project (this
     // tab missed the switch event): follow it the same way.
@@ -98,7 +98,8 @@ export class ProjectSwitcher {
     this.switching = true;
     try {
       const res = await this.app.agent.post('/api/projects/open', { id });
-      await this.afterSwitch(res);
+      this.app.agent.bindProject(res.id);
+      await this.afterSwitch();
     } catch (err) {
       this.editor.log.error('Could not open project', err.message);
     } finally {
@@ -111,7 +112,8 @@ export class ProjectSwitcher {
     this.switching = true;
     try {
       const res = await this.app.agent.post('/api/projects/create', { name });
-      await this.afterSwitch(res);
+      this.app.agent.bindProject(res.id);
+      await this.afterSwitch();
     } catch (err) {
       this.editor.log.error('Could not create project', err.message);
     } finally {
@@ -128,31 +130,33 @@ export class ProjectSwitcher {
     if (this.switching || this.following) return;
     this.following = true;
     try {
-      const before = this.app.agent.info?.projectId;
-      await this.app.agent.ping();
-      const info = this.app.agent.info;
-      if (!info || info.projectId === before) return;
+      const { agent } = this.app;
+      await agent.ping();
+      const info = agent.info;
+      if (!info?.projectId || info.projectId === agent.projectId) return;
+      agent.bindProject(info.projectId);
       const { scene } = this.editor;
       if (scene.dirty) {
         if (this.editor.isPlaying) this.app.play.exit();
         scene.path = null;
         this.editor.emit('project-changed');
         this.editor.log.warn(
-          `Another tab opened project ${info.name}. Your unsaved scene "${scene.name}" is still open here; use Save As to save it into ${info.name}.`,
+          `Another tab opened project ${info.project}. Your unsaved scene "${scene.name}" is still open here; use Save As to save it into ${info.project}.`,
         );
         return;
       }
-      await this.afterSwitch(info);
+      await this.afterSwitch();
     } finally {
       this.following = false;
     }
   }
 
-  async afterSwitch(info) {
+  /** Load the project the agent (and this tab, via bindProject) is now on. */
+  async afterSwitch() {
     await this.app.agent.ping();
     this.editor.scene.markClean();
     this.editor.emit('project-changed');
-    this.editor.log.info(`Opened project ${info.name}`);
+    this.editor.log.info(`Opened project ${this.app.agent.info?.project}`);
     await this.app.files.openStartScene({ forget: true });
   }
 }
