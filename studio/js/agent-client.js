@@ -155,6 +155,75 @@ export class AgentClient extends Emitter {
     }
   }
 
+  /**
+   * Start a background job ({ async: true }) and resolve with its result.
+   * Progress comes from 'job' events (or polling if the stream is down).
+   * Returns { promise, cancel }.
+   */
+  runJob(path, body, onProgress = () => {}) {
+    let jobId = null;
+    let cancelled = false;
+    const promise = (async () => {
+      const { jobId: id } = await this.post(path, { ...body, async: true });
+      jobId = id;
+      if (cancelled) await this.post('/api/jobs/cancel', { id });
+      return new Promise((resolve, reject) => {
+        let timer = 0;
+        const finish = (job) => {
+          off();
+          clearInterval(timer);
+          if (job.state === 'done') resolve(job.result);
+          else if (job.state === 'cancelled') reject(new AgentError(499, 'Cancelled'));
+          else reject(new AgentError(job.error?.status || 500, job.error?.message || 'Job failed'));
+        };
+        const handle = (job) => {
+          if (job.id !== id) return;
+          onProgress(job);
+          if (job.state !== 'running') finish(job);
+        };
+        const off = this.on('event', ({ type, data }) => type === 'job' && handle(data));
+        // Polling backs up the event stream (and catches missed events).
+        timer = setInterval(async () => {
+          try {
+            handle(await this.get(`/api/job?id=${encodeURIComponent(id)}`));
+          } catch (err) {
+            off();
+            clearInterval(timer);
+            reject(err);
+          }
+        }, 1000);
+      });
+    })();
+    return {
+      promise,
+      cancel: () => {
+        cancelled = true;
+        if (jobId) this.post('/api/jobs/cancel', { id: jobId }).catch(() => {});
+      },
+    };
+  }
+
+  /** Upload bytes in chunks; resolves with the upload id. */
+  async upload(bytes, onProgress = () => {}) {
+    const { uploadId, chunkSize } = await this.post('/api/uploads/start', { size: bytes.byteLength });
+    for (let offset = 0; offset < bytes.byteLength; offset += chunkSize) {
+      const chunk = bytes.subarray(offset, Math.min(bytes.byteLength, offset + chunkSize));
+      const res = await fetch(`/api/uploads/chunk?id=${uploadId}&offset=${offset}`, {
+        method: 'POST',
+        headers: { 'X-Vox-Token': this.token, 'Content-Type': 'application/octet-stream' },
+        body: chunk,
+        credentials: 'omit',
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new AgentError(res.status, data?.error?.message || 'Upload failed');
+      }
+      onProgress((offset + chunk.byteLength) / bytes.byteLength);
+    }
+    await this.post('/api/uploads/finish', { id: uploadId });
+    return uploadId;
+  }
+
   startPolling() {
     clearInterval(this.timer);
     this.ping();
