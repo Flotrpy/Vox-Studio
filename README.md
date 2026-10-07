@@ -30,8 +30,10 @@ Vox Agent v0.1.0
   Project      C:\Users\you\VoxProject
 ```
 
-Open the Studio URL. The token in the URL pairs the editor with this agent
-run; it changes every time the agent starts.
+Open the Studio URL once to pair the editor with the agent. The token is
+kept between runs, so a paired browser reconnects after the agent restarts;
+`--new-token` issues a new one (unpairing every browser) and `--no-persist`
+uses a new, never-stored token on every run.
 
 Options (`node agent/agent.js --help`):
 

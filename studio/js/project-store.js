@@ -69,7 +69,10 @@ export class AgentProject {
   async importBytes(name, format, bytes, task) {
     let body;
     if (bytes.byteLength > 3 * 1024 * 1024) {
-      const uploadId = await this.agent.upload(bytes, (p) => task?.update(p * 0.4, 'Uploading'));
+      // Cancel works during the upload too, not only once the job runs.
+      const controller = new AbortController();
+      if (task) task.onCancel = () => controller.abort();
+      const uploadId = await this.agent.upload(bytes, (p) => task?.update(p * 0.4, 'Uploading'), controller.signal);
       body = { name, format, uploadId };
     } else {
       body = { name, format, data: bytesToBase64(bytes), encoding: 'base64' };

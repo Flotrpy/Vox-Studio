@@ -61,8 +61,9 @@ Any page you open in your browser can try to send requests to
   token and so revokes every paired browser; `--no-persist` restores the
   1.0 behavior of a new token on every run that is never written to disk. The studio receives it through the URL
   fragment (`#token=...`), which browsers never send to servers or put in the
-  Referer header. The studio stores it in `sessionStorage` and removes it from
-  the address bar. Every `/api/` request must carry it in the `X-Vox-Token`
+  Referer header. The studio stores it in `sessionStorage` (and in
+  `localStorage` when the agent persists it) and removes it from the
+  address bar. Every `/api/` request must carry it in the `X-Vox-Token`
   header. Tokens are compared in constant time.
 - **No CORS.** The agent never sends `Access-Control-Allow-*` headers, so a
   cross-origin page cannot read responses, and the custom token header forces
@@ -145,9 +146,11 @@ project open, so a stale tab cannot overwrite a scene in the new project.
 - Chunked uploads (for files above the JSON body cap) are limited by
   `--max-upload` (512 MB by default), accept only
   `application/octet-stream` chunks of at most 8 MB at the expected offset,
-  and are stored under `.vox/uploads/` with random 144-bit ids chosen by the
-  agent. An upload can be read once (by an import) and is then deleted;
-  unfinished uploads expire after an hour and are removed at startup.
+  one at a time, and are stored under `.vox/uploads/` with random 144-bit
+  ids chosen by the agent. An upload can be read once (by an import) and is
+  then deleted; unfinished uploads expire after an hour and are removed at
+  startup. If `.vox` or `.vox/uploads` is a link, uploads are refused and
+  the startup cleanup is skipped, so it never deletes files elsewhere.
 - The event stream needs the token like every API request, is capped at 16
   open connections, and only reports project-relative paths outside hidden
   folders.

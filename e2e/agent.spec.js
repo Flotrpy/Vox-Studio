@@ -31,6 +31,33 @@ test('large imports upload in chunks and report progress', async ({ page }) => {
   expect(result.tris).toBe(120000);
 });
 
+test('a large import can be cancelled while it is still uploading', async ({ page }) => {
+  const result = await studio(page, async () => {
+    const bytes = new Uint8Array(12 * 1024 * 1024).fill(32);
+    const task = {
+      update: (p, m) => {
+        if (m === 'Uploading') task.onCancel?.();
+      },
+      onCancel: null,
+    };
+    try {
+      await window.voxStudio.editor.project.importBytes('cancel.obj', 'obj', bytes, task);
+      return 'finished';
+    } catch (err) {
+      return err.status;
+    }
+  });
+  expect(result).toBe(499);
+  // The agent dropped the upload, so all upload slots are free again.
+  const ids = await studio(page, async () => {
+    const out = [];
+    for (let i = 0; i < 8; i++) out.push((await window.voxStudio.agent.post('/api/uploads/start', { size: 1 })).uploadId);
+    for (const id of out) await window.voxStudio.agent.post('/api/uploads/cancel', { id });
+    return out.length;
+  });
+  expect(ids).toBe(8);
+});
+
 test('benchmarks run as jobs and can be cancelled from the status bar', async ({ page }) => {
   await page.evaluate(() => window.voxStudio.dock.openPanel('agent'));
   await page.click('.tb-btn:has-text("CPU Benchmark")');

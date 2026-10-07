@@ -4,7 +4,7 @@ import { PRODUCT, VERSION } from './lib/version.js';
 import { loadPairingToken } from './lib/pairing.js';
 import { userConfigDir } from './lib/user-config.js';
 import { rememberProject } from './lib/jobs/projects.js';
-import { ensureProject } from './lib/project.js';
+import { ensureProject, clearStaleUploads } from './lib/project.js';
 import { createAgentServer } from './lib/server.js';
 
 function printBanner(port, pairing, project) {
@@ -57,6 +57,7 @@ async function main() {
   }
 
   await ensureProject(config.project);
+  await clearStaleUploads(config.project);
   const pairing = await loadPairingToken(userConfigDir(), { persist: config.persistToken, rotate: config.newToken });
   const token = pairing.token;
   const agent = createAgentServer({

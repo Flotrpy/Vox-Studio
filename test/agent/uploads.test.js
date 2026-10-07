@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { startAgent } from '../helpers/agent-harness.js';
+import { ensureProject, clearStaleUploads } from '../../agent/lib/project.js';
 
 test('large files upload in chunks and import without hitting the body cap', async (t) => {
   // 1 KB body cap: the OBJ below is far larger than one JSON request.
@@ -48,4 +49,40 @@ test('uploads enforce size, order and id rules', async (t) => {
   assert.equal((await request('POST', `/api/uploads/chunk?id=${json.uploadId}&offset=0`, { headers: octet, body: 'x'.repeat(20) })).status, 413);
   assert.equal((await request('POST', '/api/uploads/finish', { body: { id: json.uploadId } })).status, 409);
   assert.equal((await request('POST', '/api/uploads/cancel', { body: { id: json.uploadId } })).status, 200);
+});
+
+test('a linked .vox folder is never written to or cleaned up', async (t) => {
+  const { request, project } = await startAgent(t);
+  const outside = await fs.mkdtemp(path.join(path.dirname(project), 'outside-'));
+  await fs.mkdir(path.join(outside, 'uploads'));
+  await fs.writeFile(path.join(outside, 'uploads', 'keep.txt'), 'precious');
+  await fs.cp(path.join(project, '.vox'), outside, { recursive: true });
+  await fs.rm(path.join(project, '.vox'), { recursive: true });
+  await fs.symlink(outside, path.join(project, '.vox'), 'dir');
+
+  await clearStaleUploads(project);
+  await ensureProject(project);
+  assert.equal(await fs.readFile(path.join(outside, 'uploads', 'keep.txt'), 'utf8'), 'precious');
+  assert.equal((await request('POST', '/api/uploads/start', { body: { size: 10 } })).status, 403);
+});
+
+test('stale uploads are cleared at startup only', async (t) => {
+  const { project } = await startAgent(t);
+  const dir = path.join(project, '.vox', 'uploads');
+  await fs.mkdir(dir, { recursive: true });
+  await fs.writeFile(path.join(dir, 'old.part'), 'x');
+  await ensureProject(project);
+  await fs.access(path.join(dir, 'old.part'));
+  await clearStaleUploads(project);
+  await assert.rejects(fs.access(dir));
+});
+
+test('uploads left in another project do not use up this project\'s slots', async (t) => {
+  const { request, project } = await startAgent(t);
+  await ensureProject(path.join(path.dirname(project), 'Second'));
+  for (let i = 0; i < 8; i++) assert.equal((await request('POST', '/api/uploads/start', { body: { size: 10 } })).status, 200);
+  assert.equal((await request('POST', '/api/uploads/start', { body: { size: 10 } })).status, 429);
+  const second = (await request('GET', '/api/projects')).json.projects.find((p) => p.name === 'Second');
+  assert.equal((await request('POST', '/api/projects/open', { body: { id: second.id } })).status, 200);
+  assert.equal((await request('POST', '/api/uploads/start', { body: { size: 10 } })).status, 200);
 });
