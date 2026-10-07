@@ -89,7 +89,7 @@ canvas:focus-visible {
 /* Thin flat scrollbars. */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #5E5E5E transparent;
+  scrollbar-color: var(--scrollbar) transparent;
 }
 
 ::-webkit-scrollbar {
@@ -102,13 +102,13 @@ canvas:focus-visible {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #5E5E5E;
+  background: var(--scrollbar);
   border: 2px solid transparent;
   background-clip: content-box;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background-color: #6E6E6E;
+  background-color: var(--scrollbar-hover);
 }
 
 ::-webkit-scrollbar-corner {

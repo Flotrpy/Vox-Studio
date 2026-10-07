@@ -117,7 +117,7 @@
 
 .tb-btn.on,
 .tb-btn[aria-pressed="true"] {
-  background: #4F4F4F;
+  background: var(--tb-on-bg);
   color: var(--text-strong);
 }
 
@@ -151,7 +151,7 @@
 }
 
 .input:hover {
-  border-color: #101010;
+  border-color: var(--input-hover-border);
 }
 
 .input:focus {
@@ -212,8 +212,8 @@ textarea.input {
 }
 
 .check:hover {
-  border-color: #0A0A0A;
-  background: #333333;
+  border-color: var(--input-hover-border);
+  background: var(--check-hover-bg);
 }
 
 .check .icon {
@@ -253,15 +253,15 @@ textarea.input {
   height: var(--field-height);
   min-width: 0;
   padding: 0 4px 0 6px;
-  background: #515151;
-  border: 1px solid #242424;
+  background: var(--dropdown-bg);
+  border: 1px solid var(--dropdown-border);
   border-radius: var(--radius);
   color: var(--text-strong);
   text-align: left;
 }
 
 .dropdown-field:hover {
-  background: #5A5A5A;
+  background: var(--dropdown-hover);
 }
 
 .dropdown-field .value {
@@ -291,7 +291,7 @@ textarea.input {
   right: 4px;
   top: 8px;
   height: 2px;
-  background: #5E5E5E;
+  background: var(--slider-track);
 }
 
 .slider .thumb {
@@ -300,13 +300,13 @@ textarea.input {
   width: 8px;
   height: 12px;
   margin-left: -4px;
-  background: #999999;
-  border: 1px solid #1F1F1F;
+  background: var(--slider-thumb);
+  border: 1px solid var(--slider-thumb-border);
   border-radius: 1px;
 }
 
 .slider:hover .thumb {
-  background: #B4B4B4;
+  background: var(--slider-thumb-hover);
 }
 
 /* Menus ------------------------------------------------------------------- */
@@ -320,7 +320,7 @@ textarea.input {
   padding: 3px 0;
   background: var(--menu-bg);
   border: 1px solid var(--menu-border);
-  box-shadow: 1px 2px 4px rgba(0, 0, 0, 0.35);
+  box-shadow: 1px 2px 4px var(--shadow);
   color: var(--text);
 }
 
@@ -354,7 +354,7 @@ textarea.input {
 }
 
 .menu-item.active .shortcut {
-  color: #D8E4F0;
+  color: var(--menu-active-shortcut);
 }
 
 .menu-item.disabled {
@@ -362,14 +362,14 @@ textarea.input {
 }
 
 .menu-item.disabled.active {
-  background: #4A4A4A;
+  background: var(--menu-separator);
   color: var(--text-disabled);
 }
 
 .menu-separator {
   height: 1px;
   margin: 3px 0;
-  background: #4A4A4A;
+  background: var(--row-hover);
 }
 
 .menu-search {
@@ -417,7 +417,7 @@ textarea.input {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--backdrop);
 }
 
 .dialog {
@@ -428,7 +428,7 @@ textarea.input {
   max-height: calc(100vh - 32px);
   background: var(--panel-bg);
   border: 1px solid var(--border);
-  box-shadow: 1px 3px 8px rgba(0, 0, 0, 0.4);
+  box-shadow: 1px 3px 8px var(--shadow);
 }
 
 .dialog-title {

@@ -83,7 +83,7 @@
 }
 
 .tree-row .folder-icon {
-  color: #B9A06B;
+  color: var(--folder);
 }
 
 .tree-row .name {
@@ -140,7 +140,7 @@
 }
 
 .scene-row:hover {
-  background: #424242;
+  background: var(--scene-row-hover);
 }
 
 .row-menu {
@@ -237,12 +237,12 @@
   height: 22px;
   padding: 0 4px 0 2px;
   background: var(--foldout-bg);
-  border-top: 1px solid #474747;
+  border-top: 1px solid var(--foldout-top);
   color: var(--text-strong);
 }
 
 .component-header:hover {
-  background: #454545;
+  background: var(--foldout-hover);
 }
 
 .component-header .foldout {
@@ -411,7 +411,7 @@
 .code-field textarea {
   width: 100%;
   min-height: 160px;
-  background: #232323;
+  background: var(--code-bg);
 }
 
 .code-hint {
@@ -564,7 +564,7 @@
   justify-content: center;
   width: var(--tile);
   height: var(--tile);
-  color: #A9A9A9;
+  color: var(--asset-icon);
 }
 
 .asset-icon .icon {
@@ -573,7 +573,7 @@
 }
 
 .asset .icon-folder {
-  color: #B9A06B;
+  color: var(--folder);
 }
 
 .asset-name {
@@ -678,7 +678,7 @@
   width: 70px;
   height: 12px;
   margin: 0;
-  accent-color: #9A9A9A;
+  accent-color: var(--slider-thumb);
 }
 
 /* Console ---------------------------------------------------------------------- */
@@ -720,7 +720,7 @@
 }
 
 .console-row.info .log-icon {
-  color: #A9A9A9;
+  color: var(--asset-icon);
 }
 
 .console-row.warning .log-icon {
@@ -747,7 +747,7 @@
   flex: none;
   min-width: 18px;
   padding: 0 4px;
-  background: #5A5A5A;
+  background: var(--badge-bg);
   border-radius: var(--radius);
   color: var(--text-strong);
   font-size: var(--font-size-small);
@@ -975,7 +975,7 @@ body.playing .viewport {
 
 .shortcuts td {
   padding: 2px 8px 2px 0;
-  border-bottom: 1px solid #424242;
+  border-bottom: 1px solid var(--table-line);
   vertical-align: top;
 }
 
@@ -1063,7 +1063,7 @@ body.playing .viewport {
   line-height: 20px;
   font-weight: 600;
   color: var(--text-strong);
-  border-bottom: 1px solid #474747;
+  border-bottom: 1px solid var(--foldout-top);
   margin-bottom: 2px;
 }
 
@@ -1088,7 +1088,7 @@ body.playing .viewport {
 
 .meter-fill {
   height: 100%;
-  background: #5B7EA6;
+  background: var(--meter);
 }
 
 .meter-text {
