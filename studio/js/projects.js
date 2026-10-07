@@ -12,8 +12,11 @@ export class ProjectSwitcher {
     this.editor = app.editor;
     app.agent.on('event', ({ type, data }) => {
       // Another tab switched projects: follow it.
-      if (type === 'project' && !this.switching && data.name !== this.app.agent.info?.project) this.afterSwitch(data);
+      if (type === 'project' && data.id !== this.app.agent.info?.projectId) this.follow();
     });
+    // A request was refused because the agent is on another project (this
+    // tab missed the switch event): follow it the same way.
+    app.agent.on('project-mismatch', () => this.follow());
   }
 
   menuItems() {
@@ -113,6 +116,35 @@ export class ProjectSwitcher {
       this.editor.log.error('Could not create project', err.message);
     } finally {
       this.switching = false;
+    }
+  }
+
+  /**
+   * Follow a switch made in another tab. Unsaved edits are never dropped: the
+   * scene stays open, detached from its old path, so Save asks for a name in
+   * the new project instead of overwriting a scene there.
+   */
+  async follow() {
+    if (this.switching || this.following) return;
+    this.following = true;
+    try {
+      const before = this.app.agent.info?.projectId;
+      await this.app.agent.ping();
+      const info = this.app.agent.info;
+      if (!info || info.projectId === before) return;
+      const { scene } = this.editor;
+      if (scene.dirty) {
+        if (this.editor.isPlaying) this.app.play.exit();
+        scene.path = null;
+        this.editor.emit('project-changed');
+        this.editor.log.warn(
+          `Another tab opened project ${info.name}. Your unsaved scene "${scene.name}" is still open here; use Save As to save it into ${info.name}.`,
+        );
+        return;
+      }
+      await this.afterSwitch(info);
+    } finally {
+      this.following = false;
     }
   }
 

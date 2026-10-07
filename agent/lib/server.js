@@ -10,9 +10,40 @@ import { redeemTicket } from './jobs/export.js';
 import { EventHub, STREAMING } from './events.js';
 import { JobManager } from './job-manager.js';
 import { watchProject } from './watcher.js';
+import { projectId } from './jobs/projects.js';
 import fs from 'node:fs/promises';
 
 const MAX_URL_LENGTH = 4096;
+
+/**
+ * API routes that do not act on the current project's files, so they work
+ * from a tab that still thinks another project is open.
+ */
+const PROJECT_FREE = new Set([
+  '/api/health',
+  '/api/events',
+  '/api/system',
+  '/api/benchmark',
+  '/api/jobs',
+  '/api/job',
+  '/api/jobs/cancel',
+  '/api/projects',
+  '/api/projects/open',
+  '/api/projects/create',
+]);
+
+/**
+ * The studio sends the id of the project it has open in X-Vox-Project. If
+ * another tab switched the agent to a different project since, refuse the
+ * request so a stale tab cannot read or overwrite files in the new project.
+ */
+export function checkProject(req, pathname, project) {
+  const expected = req.headers['x-vox-project'];
+  if (expected === undefined || PROJECT_FREE.has(pathname)) return;
+  if (expected !== projectId(project)) {
+    throw new HttpError(409, 'The agent switched to another project', { code: 'project-changed' });
+  }
+}
 
 /**
  * Build the agent HTTP server. Nothing is listening until `listen()`.
@@ -62,6 +93,7 @@ export function createAgentServer(options) {
     const url = new URL(req.url, `http://127.0.0.1:${config.port}`);
     if (url.pathname.startsWith('/api/')) {
       checkToken(req, config.token);
+      checkProject(req, url.pathname, config.project);
       const handler = router.match(req.method, url.pathname);
       const ctx = {
         req,

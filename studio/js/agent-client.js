@@ -64,6 +64,9 @@ export class AgentClient extends Emitter {
         method,
         headers: {
           'X-Vox-Token': this.token,
+          // Lets the agent refuse file requests meant for a project another
+          // tab has since switched away from.
+          ...(this.info?.projectId ? { 'X-Vox-Project': this.info.projectId } : {}),
           ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
         },
         body: body !== undefined ? JSON.stringify(body) : undefined,
@@ -88,6 +91,7 @@ export class AgentClient extends Emitter {
       remove('token', 'session');
       remove('token', 'local');
     }
+    if (res.status === 409 && data?.error?.details?.code === 'project-changed') this.emit('project-mismatch');
     if (!res.ok) throw new AgentError(res.status, data?.error?.message || `Request failed (${res.status})`);
     return data;
   }

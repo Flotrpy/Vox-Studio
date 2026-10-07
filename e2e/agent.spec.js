@@ -49,3 +49,19 @@ test('projects can be created and switched from the File menu', async ({ page })
   await page.waitForFunction((name) => window.voxStudio.agent.info?.project === name, name);
   await expect(page.locator('.agent-status')).toHaveClass(/connected/);
 });
+
+test('a project switch in another tab keeps unsaved edits here', async ({ page, context }) => {
+  const other = await context.newPage();
+  await openStudio(other);
+  await studio(page, () => window.voxStudio.editor.scene.createEntity({ name: 'Unsaved Work' }));
+  const name = `Other ${Date.now() % 100000}`;
+  await studio(other, (name) => window.voxStudio.projects.create(name), name);
+  await page.waitForFunction((name) => window.voxStudio.agent.info?.project === name, name);
+  await page.waitForFunction(() => window.voxStudio.editor.log.entries.some((e) => /Another tab opened project/.test(e.message)));
+  const state = await studio(page, () => {
+    const { scene } = window.voxStudio.editor;
+    return { dirty: scene.dirty, path: scene.path, kept: scene.toData().entities.some((e) => e.name === 'Unsaved Work') };
+  });
+  expect(state).toEqual({ dirty: true, path: null, kept: true });
+  await other.close();
+});
