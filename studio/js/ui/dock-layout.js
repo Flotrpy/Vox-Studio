@@ -151,3 +151,14 @@ export function dockBeside(root, target, panelId, side, fraction = 0.5) {
   parent.children[i] = wrapped;
   return root;
 }
+
+/**
+ * Shape of a layout ignoring which tab is active and tiny size differences,
+ * used to tell whether the user has rearranged a preset.
+ */
+export function layoutSignature(node) {
+  if (!node) return 'null';
+  if (node.type === 'tabs') return `[${node.panels.join(',')}]`;
+  const sizes = node.sizes.map((s) => Math.round(s * 50));
+  return `${node.dir}(${node.children.map((c, i) => `${sizes[i]}:${layoutSignature(c)}`).join(' ')})`;
+}

@@ -18,6 +18,7 @@ import { ProjectPanel } from './panels/project.js';
 import { AgentPanel } from './panels/agent-panel.js';
 import { DockManager } from './ui/dock.js';
 import { LAYOUT_PRESETS, DEFAULT_LAYOUT, PANEL_NEIGHBORS, PANEL_FALLBACK_SIDE } from './ui/layouts.js';
+import { layoutSignature, normalizeLayout } from './ui/dock-layout.js';
 import { MenuBar } from './ui/menu.js';
 import { installTooltips } from './ui/tooltip.js';
 import { Toolbar } from './ui/toolbar.js';
@@ -79,6 +80,11 @@ class App {
     this.beforeRender = (dt) => this.play.tick(dt);
 
     this.dock.on('change', (tree) => {
+      // Rearranging panels by hand turns the named preset into "Custom".
+      if (this.currentLayout && LAYOUT_PRESETS[this.currentLayout]) {
+        const preset = normalizeLayout(LAYOUT_PRESETS[this.currentLayout](), this.dock.known);
+        if (layoutSignature(preset) !== layoutSignature(tree)) this.currentLayout = null;
+      }
       save(LAYOUT_KEY, { version: LAYOUT_VERSION, name: this.currentLayout, tree });
       this.toolbar?.update();
     });
