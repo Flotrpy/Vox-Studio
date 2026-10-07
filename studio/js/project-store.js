@@ -23,6 +23,17 @@ export class AgentProject {
     return this.agent.get(`/api/files?dir=${enc(dir)}`);
   }
 
+  /** True when a file exists, checked through a folder listing (no 404s). */
+  async exists(path) {
+    const dir = path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : '';
+    try {
+      const { entries } = await this.list(dir);
+      return entries.some((e) => e.path === path);
+    } catch {
+      return false;
+    }
+  }
+
   tree() {
     return this.agent.get('/api/tree');
   }
@@ -110,6 +121,10 @@ export class LocalProject {
       children: this.data.folders.filter((f) => parentOf(f) === path).sort().map(build),
     });
     return build('');
+  }
+
+  async exists(path) {
+    return !!this.data.files[path];
   }
 
   async readScene(path) {

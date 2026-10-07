@@ -141,6 +141,7 @@ export class SceneFiles {
   async openStartScene() {
     const candidates = [load(LAST_SCENE_KEY, null), DEFAULT_SCENE_PATH].filter(Boolean);
     for (const path of candidates) {
+      if (!(await this.editor.project.exists(path))) continue;
       try {
         const data = await this.editor.project.readScene(path);
         this.editor.loadScene(data, path);
