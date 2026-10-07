@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { VERSION } from '../version.js';
+import { projectId } from './projects.js';
 
 /** GET /api/health: lets the studio confirm pairing and show status. */
 export function registerHealth(router, config) {
@@ -8,6 +9,7 @@ export function registerHealth(router, config) {
     agent: 'Vox Agent',
     version: VERSION,
     project: path.basename(config.project),
+    projectId: projectId(config.project),
     persistentToken: config.persistentToken,
   }));
 }

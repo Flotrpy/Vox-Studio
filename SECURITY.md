@@ -117,6 +117,9 @@ agent). The studio sends an opaque id, never a path, so it cannot point the
 agent at an arbitrary folder. New projects are created inside the projects
 root and their names are limited to letters, digits, spaces, `_` and `-`.
 After a switch, every file job is confined to the new project folder.
+The studio sends the id of the project it has open in `X-Vox-Project`, and
+the agent refuses file requests (409) from a tab that still has the previous
+project open, so a stale tab cannot overwrite a scene in the new project.
 
 ### 6. Malicious request content
 

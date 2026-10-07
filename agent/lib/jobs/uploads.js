@@ -43,7 +43,7 @@ export class UploadStore {
     await fs.mkdir(this.dir(), { recursive: true });
     const file = path.join(this.dir(), `${id}.part`);
     await fs.writeFile(file, Buffer.alloc(0), { flag: 'wx' });
-    this.uploads.set(id, { id, file, size, received: 0, complete: false, expires: Date.now() + EXPIRE_MS });
+    this.uploads.set(id, { id, file, project: this.config.project, size, received: 0, complete: false, expires: Date.now() + EXPIRE_MS });
     return { uploadId: id, chunkSize: 4 * 1024 * 1024 };
   }
 
@@ -51,6 +51,11 @@ export class UploadStore {
     if (typeof id !== 'string' || !ID_PATTERN.test(id)) throw new HttpError(400, 'Invalid upload id');
     const u = this.uploads.get(id);
     if (!u) throw new HttpError(404, 'Unknown or expired upload');
+    // An upload belongs to the project it started in; after a switch it can
+    // no longer be continued or imported into the new one.
+    if (u.project !== this.config.project) {
+      throw new HttpError(409, 'The agent switched to another project', { code: 'project-changed' });
+    }
     return u;
   }
 
@@ -89,7 +94,10 @@ export class UploadStore {
   }
 
   async cancel(body) {
-    const u = this.get(body?.id);
+    const id = body?.id;
+    if (typeof id !== 'string' || !ID_PATTERN.test(id)) throw new HttpError(400, 'Invalid upload id');
+    const u = this.uploads.get(id);
+    if (!u) throw new HttpError(404, 'Unknown or expired upload');
     this.uploads.delete(u.id);
     await fs.rm(u.file, { force: true });
     return { ok: true };

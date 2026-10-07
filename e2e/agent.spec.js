@@ -49,3 +49,61 @@ test('projects can be created and switched from the File menu', async ({ page })
   await page.waitForFunction((name) => window.voxStudio.agent.info?.project === name, name);
   await expect(page.locator('.agent-status')).toHaveClass(/connected/);
 });
+
+test('a project switch in another tab keeps unsaved edits here', async ({ page, context }) => {
+  const other = await context.newPage();
+  await openStudio(other);
+  await studio(page, () => window.voxStudio.editor.scene.createEntity({ name: 'Unsaved Work' }));
+  const name = `Other ${Date.now() % 100000}`;
+  await studio(other, (name) => window.voxStudio.projects.create(name), name);
+  await page.waitForFunction((name) => window.voxStudio.agent.info?.project === name, name);
+  await page.waitForFunction((name) => window.voxStudio.editor.log.entries.some((e) => e.message.includes(`Another tab opened project ${name}.`)), name);
+  const state = await studio(page, () => {
+    const { scene } = window.voxStudio.editor;
+    return { dirty: scene.dirty, path: scene.path, kept: scene.toData().entities.some((e) => e.name === 'Unsaved Work') };
+  });
+  expect(state).toEqual({ dirty: true, path: null, kept: true });
+  await other.close();
+});
+
+/** Drop project events in a tab, as if its event stream were down. */
+function dropProjectEvents(page) {
+  return studio(page, () => {
+    const agent = window.voxStudio.agent;
+    const emit = agent.emit.bind(agent);
+    agent.emit = (name, payload) => (name === 'event' && payload?.type === 'project' ? undefined : emit(name, payload));
+  });
+}
+
+const warned = (page, name) =>
+  page.waitForFunction((name) => window.voxStudio.editor.log.entries.some((e) => e.message.includes(`Another tab opened project ${name}.`)), name);
+
+test('a tab that missed the switch event cannot save into the new project', async ({ page, context }) => {
+  const other = await context.newPage();
+  await openStudio(other);
+  await dropProjectEvents(page);
+  await studio(page, () => window.voxStudio.editor.scene.createEntity({ name: 'Stale Edit' }));
+  const name = `Missed ${Date.now() % 100000}`;
+  await studio(other, (name) => window.voxStudio.projects.create(name), name);
+  expect(await studio(page, () => window.voxStudio.files.save())).toBe(false);
+  await warned(page, name);
+  expect(await studio(page, () => window.voxStudio.editor.scene.path)).toBeNull();
+  const scene = await studio(other, () => window.voxStudio.editor.project.readScene('Assets/Scenes/Main.voxscene').catch(() => null));
+  expect(scene?.entities.some((e) => e.name === 'Stale Edit') ?? false).toBe(false);
+  await other.close();
+});
+
+test('a health poll alone does not move a tab onto the new project', async ({ page, context }) => {
+  const other = await context.newPage();
+  await openStudio(other);
+  await dropProjectEvents(page);
+  await studio(page, () => window.voxStudio.editor.scene.createEntity({ name: 'Polled Edit' }));
+  const name = `Polled ${Date.now() % 100000}`;
+  await studio(other, (name) => window.voxStudio.projects.create(name), name);
+  // The regular health poll notices the switch and follows it properly.
+  await studio(page, () => window.voxStudio.agent.ping());
+  await warned(page, name);
+  const state = await studio(page, () => ({ dirty: window.voxStudio.editor.scene.dirty, path: window.voxStudio.editor.scene.path }));
+  expect(state).toEqual({ dirty: true, path: null });
+  await other.close();
+});
