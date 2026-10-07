@@ -1,5 +1,21 @@
 # Vox Studio
 
+[![CI](https://github.com/Flotrpy/Vox-Studio/actions/workflows/ci.yml/badge.svg)](https://github.com/Flotrpy/Vox-Studio/actions/workflows/ci.yml)
+![version](https://img.shields.io/badge/version-0.1.0-8b5cf6)
+[![node](https://img.shields.io/badge/node-20%2B-5fa04e?logo=nodedotjs&logoColor=white)](package.json)
+[![license](https://img.shields.io/badge/license-MIT-97ca00)](LICENSE)
+
+![editor](https://img.shields.io/badge/editor-plain%20ES%20modules-f7df1e?logo=javascript&logoColor=white)
+[![3D](https://img.shields.io/badge/3D-Three.js%20r160-000000?logo=threedotjs&logoColor=white)](THIRD_PARTY_NOTICES.md)
+![agent](https://img.shields.io/badge/agent-Node.js%2C%20zero%20deps-339933?logo=nodedotjs&logoColor=white)
+![bundler](https://img.shields.io/badge/bundler-none-lightgrey)
+![live updates](https://img.shields.io/badge/live%20updates-Server--Sent%20Events-5ba3e6)
+
+[![tests](https://img.shields.io/badge/tests-114%20unit%20%C2%B7%2030%20browser-44cc11)](#tests)
+[![browser tests](https://img.shields.io/badge/browser%20tests-Playwright-2ead33?logo=playwright&logoColor=white)](playwright.config.js)
+![test runner](https://img.shields.io/badge/test%20runner-node%20----test-339933?logo=nodedotjs&logoColor=white)
+[![security](https://img.shields.io/badge/security-threat%20model-6f42c1)](SECURITY.md)
+
 Vox Studio is a browser-based 3D game editor. **Vox Agent** is its small
 local helper: a Node.js process you start from a terminal that serves the
 editor and does the heavy work (file access, asset conversion, builds) on
