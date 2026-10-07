@@ -20,9 +20,9 @@ export class UploadStore {
     this.uploads = new Map();
   }
 
-  async dir() {
+  async dir(project) {
     try {
-      return await uploadsDir(this.config.project);
+      return await uploadsDir(project);
     } catch {
       throw new HttpError(403, 'The project .vox folder must be a plain folder');
     }
@@ -39,17 +39,27 @@ export class UploadStore {
   }
 
   async start(body) {
+    // Everything about this upload belongs to the project open right now,
+    // even if another tab switches while the file is being created.
+    const project = this.config.project;
     await this.cleanup();
     const size = Number(body?.size);
     if (!Number.isInteger(size) || size <= 0) throw new HttpError(400, 'size must be a positive integer');
     if (size > this.config.maxUpload) throw new HttpError(413, `Upload exceeds ${this.config.maxUpload} bytes`);
-    if (this.uploads.size >= 8) throw new HttpError(429, 'Too many uploads in progress');
+    // The limit is per project, so uploads left in another one never block this one.
+    const inProject = [...this.uploads.values()].filter((u) => u.project === project).length;
+    if (inProject >= 8) throw new HttpError(429, 'Too many uploads in progress');
     const id = randomBytes(18).toString('base64url');
-    const dir = await this.dir();
+    const dir = await this.dir(project);
     await fs.mkdir(dir, { recursive: true });
     const file = path.join(dir, `${id}.part`);
     await fs.writeFile(file, Buffer.alloc(0), { flag: 'wx' });
-    this.uploads.set(id, { id, file, project: this.config.project, size, received: 0, complete: false, expires: Date.now() + EXPIRE_MS });
+    this.uploads.set(id, { id, file, project, size, received: 0, complete: false, expires: Date.now() + EXPIRE_MS });
+    if (this.config.project !== project) {
+      this.uploads.delete(id);
+      await fs.rm(file, { force: true });
+      throw new HttpError(409, 'The agent switched to another project', { code: 'project-changed' });
+    }
     return { uploadId: id, chunkSize: 4 * 1024 * 1024 };
   }
 
@@ -78,6 +88,8 @@ export class UploadStore {
     try {
       const data = await readBody(req, Math.min(CHUNK_MAX, u.size - u.received));
       if (data.length === 0) throw new HttpError(400, 'Empty chunk');
+      // The project may have switched while the body was arriving.
+      this.get(u.id);
       await fs.appendFile(u.file, data);
       u.received += data.length;
       // Cancelled while this chunk was being written: drop what it recreated.

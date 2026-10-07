@@ -76,3 +76,13 @@ test('stale uploads are cleared at startup only', async (t) => {
   await clearStaleUploads(project);
   await assert.rejects(fs.access(dir));
 });
+
+test('uploads left in another project do not use up this project\'s slots', async (t) => {
+  const { request, project } = await startAgent(t);
+  await ensureProject(path.join(path.dirname(project), 'Second'));
+  for (let i = 0; i < 8; i++) assert.equal((await request('POST', '/api/uploads/start', { body: { size: 10 } })).status, 200);
+  assert.equal((await request('POST', '/api/uploads/start', { body: { size: 10 } })).status, 429);
+  const second = (await request('GET', '/api/projects')).json.projects.find((p) => p.name === 'Second');
+  assert.equal((await request('POST', '/api/projects/open', { body: { id: second.id } })).status, 200);
+  assert.equal((await request('POST', '/api/uploads/start', { body: { size: 10 } })).status, 200);
+});
