@@ -6,6 +6,8 @@ import { REPO_ROOT, VERSION } from '../version.js';
 import { resolveReal } from '../paths.js';
 import { writeProjectFile, readProjectText } from './scenes.js';
 import { normalizeScene, parseScene, SceneFormatError, SCENE_EXTENSION } from '../../../shared/scene-format.js';
+import { checkCancelled } from '../job-manager.js';
+import { maybeAsync } from './jobs.js';
 
 /**
  * Modules embedded into every build. Each becomes a data: URL in the
@@ -43,9 +45,12 @@ export function safeFolderName(name) {
 }
 
 /** Produce the standalone play.html text for a validated scene. */
-export async function buildPlayerHtml(scene, title) {
+export async function buildPlayerHtml(scene, title, { progress = () => {}, signal } = {}) {
   const imports = {};
-  for (const [specifier, file] of Object.entries(PLAYER_MODULES)) {
+  const modules = Object.entries(PLAYER_MODULES);
+  for (const [i, [specifier, file]] of modules.entries()) {
+    checkCancelled(signal);
+    progress(0.1 + (0.7 * i) / modules.length, 'Embedding engine');
     const source = await fs.readFile(path.join(REPO_ROOT, file));
     imports[specifier] = `data:text/javascript;base64,${source.toString('base64')}`;
   }
@@ -64,7 +69,7 @@ export async function buildPlayerHtml(scene, title) {
  * Export a scene (given inline, or by project path) to
  * Builds/<Name>/play.html inside the project.
  */
-export async function exportBuild(root, body) {
+export async function exportBuild(root, body, ctx = {}) {
   let scene;
   try {
     if (body.scenePath !== undefined) {
@@ -81,7 +86,9 @@ export async function exportBuild(root, body) {
   }
   const title = typeof body.title === 'string' && body.title.trim() ? body.title.trim().slice(0, 128) : scene.name;
   const folder = safeFolderName(body.folder || scene.name);
-  const html = await buildPlayerHtml(scene, title);
+  const html = await buildPlayerHtml(scene, title, ctx);
+  checkCancelled(ctx.signal);
+  ctx.progress?.(0.9, 'Writing play.html');
   const saved = await writeProjectFile(root, `Builds/${folder}/play.html`, html);
   return { ok: true, path: saved, bytes: Buffer.byteLength(html), entities: scene.entities.length };
 }
@@ -114,6 +121,9 @@ export function redeemTicket(ticket) {
 
 /** POST /api/export, POST /api/build/ticket */
 export function registerExport(router, config) {
-  router.post('/api/export', async ({ json }) => exportBuild(config.project, await json()));
+  router.post('/api/export', async ({ json }) => {
+    const body = await json();
+    return maybeAsync(config, body, 'export', 'Build', (ctx) => exportBuild(config.project, body, ctx));
+  });
   router.post('/api/build/ticket', async ({ json }) => createTicket(config.project, (await json()).path));
 }
