@@ -201,8 +201,57 @@ export class EditorCamera {
     return true;
   }
 
+  /**
+   * Touch: two fingers pan (move together) and zoom (pinch). One-finger
+   * orbit is handled by the scene view so taps can still select.
+   */
+  _bindTouch() {
+    const el = this.element;
+    this.touches = new Map();
+    let last = null;
+    const centroid = () => {
+      const pts = [...this.touches.values()];
+      const x = pts.reduce((a, p) => a + p.x, 0) / pts.length;
+      const y = pts.reduce((a, p) => a + p.y, 0) / pts.length;
+      const d = pts.length > 1 ? Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) : 0;
+      return { x, y, d };
+    };
+    el.addEventListener('pointerdown', (e) => {
+      if (e.pointerType !== 'touch') return;
+      this.touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (this.touches.size >= 2) {
+        // A second finger turns any one-finger gesture into pan/zoom.
+        e.stopImmediatePropagation();
+        el.setPointerCapture(e.pointerId);
+        this.mode = 'touch';
+        last = centroid();
+      }
+    }, true);
+    el.addEventListener('pointermove', (e) => {
+      if (!this.touches.has(e.pointerId)) return;
+      this.touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (this.touches.size < 2 || !last) return;
+      const now = centroid();
+      this.pan(now.x - last.x, now.y - last.y);
+      if (last.d > 0 && now.d > 0) this.zoom(last.d / now.d);
+      last = now;
+    }, true);
+    const end = (e) => {
+      if (!this.touches.delete(e.pointerId)) return;
+      if (this.touches.size < 2) last = null;
+      if (this.touches.size === 0 && this.mode === 'touch') this.mode = null;
+    };
+    el.addEventListener('pointerup', end, true);
+    el.addEventListener('pointercancel', end, true);
+  }
+
+  get touchCount() {
+    return this.touches?.size || 0;
+  }
+
   _bind() {
     const el = this.element;
+    this._bindTouch();
     el.addEventListener('contextmenu', (e) => e.preventDefault());
     el.addEventListener('pointerdown', (e) => {
       let mode = null;

@@ -58,3 +58,13 @@ test('garbage input yields null instead of throwing', () => {
   assert.equal(normalizeLayout({ type: 'split', children: 'x' }, known), null);
   assert.equal(normalizeLayout(tabs([]), known), null);
 });
+
+test('layoutSignature ignores the active tab but not rearrangements', async () => {
+  const { layoutSignature } = await import('../../studio/js/ui/dock-layout.js');
+  const a = normalizeLayout(defaultTree(), known);
+  const b = normalizeLayout(defaultTree(), known);
+  b.children[0].children[0].children[1].active = 1;
+  assert.equal(layoutSignature(a), layoutSignature(b));
+  const moved = removePanel(normalizeLayout(defaultTree(), known), 'console', known);
+  assert.notEqual(layoutSignature(a), layoutSignature(moved));
+});

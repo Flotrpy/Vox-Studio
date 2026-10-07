@@ -18,6 +18,7 @@ import { ProjectPanel } from './panels/project.js';
 import { AgentPanel } from './panels/agent-panel.js';
 import { DockManager } from './ui/dock.js';
 import { LAYOUT_PRESETS, DEFAULT_LAYOUT, PANEL_NEIGHBORS, PANEL_FALLBACK_SIDE } from './ui/layouts.js';
+import { layoutSignature, normalizeLayout } from './ui/dock-layout.js';
 import { MenuBar } from './ui/menu.js';
 import { installTooltips } from './ui/tooltip.js';
 import { Toolbar } from './ui/toolbar.js';
@@ -29,6 +30,8 @@ import { Hotkeys } from './hotkeys.js';
 import { VERSION } from './version.js';
 import { PlayMode } from './play-mode.js';
 import { BuildCommands } from './build.js';
+import { applyTheme, showPreferences } from './preferences.js';
+import { icon } from './ui/icons.js';
 
 const LAYOUT_KEY = 'layout';
 const LAYOUT_VERSION = 1;
@@ -55,6 +58,7 @@ class App {
 
   start() {
     const { editor } = this;
+    applyTheme();
     installTooltips();
     bindSceneModel(this.builder, editor.scene, () => this.invalidateViews());
 
@@ -79,6 +83,11 @@ class App {
     this.beforeRender = (dt) => this.play.tick(dt);
 
     this.dock.on('change', (tree) => {
+      // Rearranging panels by hand turns the named preset into "Custom".
+      if (this.currentLayout && LAYOUT_PRESETS[this.currentLayout]) {
+        const preset = normalizeLayout(LAYOUT_PRESETS[this.currentLayout](), this.dock.known);
+        if (layoutSignature(preset) !== layoutSignature(tree)) this.currentLayout = null;
+      }
       save(LAYOUT_KEY, { version: LAYOUT_VERSION, name: this.currentLayout, tree });
       this.toolbar?.update();
     });
@@ -133,7 +142,7 @@ class App {
   }
 
   addBrand() {
-    const brand = h('div.menubar-brand', h('img', { src: 'img/mark.svg', alt: 'Vox Studio', width: 15, height: 12 }));
+    const brand = h('div.menubar-brand', { title: 'Vox Studio' }, icon('favicon'));
     document.getElementById('menubar').prepend(brand);
   }
 
@@ -235,6 +244,7 @@ class App {
     hk.bind('Ctrl+Alt+P', () => this.play.step());
     hk.bind('Ctrl+Shift+B', () => this.builds.showDialog());
     hk.bind('Ctrl+B', () => this.builds.build({ run: true }));
+    hk.bind('Ctrl+,', () => showPreferences());
     hk.bind('Ctrl+Shift+N', () => editor.createObject('Empty'));
     hk.bind('Alt+Shift+N', () => editor.createObject('Empty', { asChild: true }));
     hk.bind('Ctrl+Shift+F', () => this.panels.scene.alignWithView());

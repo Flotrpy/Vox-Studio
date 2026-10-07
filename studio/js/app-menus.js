@@ -7,6 +7,7 @@ import { componentDisplayName } from './panels/inspector.js';
 import { COMPONENT_SCHEMAS } from '../../shared/scene-format.js';
 import { LAYOUT_PRESETS } from './ui/layouts.js';
 import { showAbout, showShortcuts, showScriptingReference } from './about.js';
+import { showPreferences } from './preferences.js';
 
 export function buildMenus(app) {
   const { editor, dock, files, panels } = app;
@@ -43,6 +44,7 @@ export function buildMenus(app) {
     ...app.playItems(),
     { separator: true },
     { label: 'Keyboard Shortcuts...', action: () => showShortcuts() },
+    { label: 'Preferences...', shortcut: 'Ctrl+,', action: () => showPreferences() },
   ];
 
   const assets = () => [

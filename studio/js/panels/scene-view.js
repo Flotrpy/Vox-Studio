@@ -461,9 +461,30 @@ export class SceneView {
     const rect = this.viewport.getBoundingClientRect();
     let marquee = false;
     this.canvas.setPointerCapture(e.pointerId);
+    const touch = e.pointerType === 'touch';
+    let lastX = startX;
+    let lastY = startY;
+    let orbiting = false;
+    let multi = false;
     const move = (ev) => {
+      if (ev.pointerId !== e.pointerId) return;
       const dx = ev.clientX - startX;
       const dy = ev.clientY - startY;
+      if (touch) {
+        // One finger orbits (pans in 2D); a second finger hands over to pinch.
+        if (this.controls.touchCount >= 2) {
+          multi = true;
+          return;
+        }
+        if (!orbiting && Math.hypot(dx, dy) > 6) orbiting = true;
+        if (orbiting) {
+          if (this.controls.is2D) this.controls.pan(ev.clientX - lastX, ev.clientY - lastY);
+          else this.controls.orbit(ev.clientX - lastX, ev.clientY - lastY);
+        }
+        lastX = ev.clientX;
+        lastY = ev.clientY;
+        return;
+      }
       if (!marquee && Math.hypot(dx, dy) > 4) marquee = true;
       if (!marquee) return;
       this.marquee.hidden = false;
@@ -475,10 +496,19 @@ export class SceneView {
       });
     };
     const up = (ev) => {
+      if (ev.pointerId !== e.pointerId) return;
       this.canvas.removeEventListener('pointermove', move);
       this.canvas.removeEventListener('pointerup', up);
       this.marquee.hidden = true;
       const { selection } = this.editor;
+      if (touch && (orbiting || multi)) return;
+      if (touch) {
+        // Double tap frames the tapped object.
+        const now = performance.now();
+        const id = this.pick(ndc);
+        if (this.lastTap && now - this.lastTap.time < 320 && this.lastTap.id === id && id) this.frame([id]);
+        this.lastTap = { time: now, id };
+      }
       if (marquee) {
         const ids = this.entitiesInRect(startX, startY, ev.clientX, ev.clientY);
         selection.set(additive ? [...selection.ids, ...ids] : ids);
