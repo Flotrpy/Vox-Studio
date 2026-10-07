@@ -102,6 +102,10 @@ discarded.
 - **Rigidbody** adds gravity, drag, bounciness and friction.
 - **Box Collider / Sphere Collider** collide (axis-aligned; bodies do not
   rotate) or act as triggers with Is Trigger.
+- **Mesh Collider** collides against the exact triangles of the object's
+  Mesh Filter mesh, for terrain, ramps and imported level geometry. It
+  works on static and kinematic objects; on a moving Rigidbody it falls
+  back to a box around the mesh.
 - **Script** components hold JavaScript. Help > Scripting Reference lists
   the API:
 

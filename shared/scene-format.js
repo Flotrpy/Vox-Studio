@@ -112,6 +112,13 @@ export const COMPONENT_SCHEMAS = Object.freeze({
       radius: { type: 'number', label: 'Radius', min: 0, max: 1e6, default: 0.5 },
     },
   },
+  MeshCollider: {
+    category: 'Physics',
+    unique: false,
+    fields: {
+      isTrigger: { type: 'bool', label: 'Is Trigger', default: false },
+    },
+  },
   Script: {
     category: 'Scripts',
     unique: false,

@@ -107,6 +107,10 @@ and starts a `PlayRuntime` (`play/runtime.js`) on the live model:
 - Rigidbody and collider components become bodies in `PhysicsWorld`
   (`play/physics.js`): gravity, drag, axis-aligned boxes and spheres,
   bounciness, friction, triggers, enter events. Bodies do not rotate.
+  Mesh Colliders become static `mesh` bodies holding world-space triangles
+  and a BVH over them, so a box or sphere only tests nearby triangles
+  (closest point for spheres, separating axes for boxes). The runtime
+  rebuilds the triangles when a kinematic mesh moves.
 - Script components are compiled with `compileScript` (`play/scripting.js`)
   into per-instance `start`, `update(dt)`, `onCollisionEnter` and
   `onTriggerEnter` hooks with an API (`transform`, `rigidbody`, `Input`,
