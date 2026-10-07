@@ -275,16 +275,14 @@ export class SceneFiles {
       }
       try {
         this.editor.log.info(`Importing ${file.name}...`);
-        let result;
-        if (ext === 'glb') {
-          const dataUrl = await readFileAs(file, 'dataurl');
-          result = await this.editor.project.importAsset(file.name, ext, dataUrl.slice(dataUrl.indexOf(',') + 1), 'base64');
-        } else {
-          result = await this.editor.project.importAsset(file.name, ext, await readFileAs(file, 'text'));
-        }
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        const result = await this.editor.tasks.run(`Importing ${file.name}`, (task) =>
+          this.editor.project.importBytes(file.name, ext, bytes, task),
+        );
         this.addImported(result);
       } catch (err) {
-        this.editor.log.error(`Import failed: ${file.name}`, err.message);
+        if (err.status === 499) this.editor.log.warn(`Import cancelled: ${file.name}`);
+        else this.editor.log.error(`Import failed: ${file.name}`, err.message);
       }
     }
     this.editor.emit('project-refresh');
