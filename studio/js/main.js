@@ -290,6 +290,21 @@ class App {
   }
 
   bindAgent() {
+    let refreshTimer = 0;
+    let changed = new Set();
+    this.agent.on('event', ({ type, data }) => {
+      if (type === 'files') {
+        // Batch bursts (e.g. a build writing many files) into one refresh.
+        for (const p of data.paths) changed.add(p);
+        clearTimeout(refreshTimer);
+        refreshTimer = setTimeout(() => {
+          const paths = [...changed];
+          changed = new Set();
+          this.files.onFilesChanged(paths);
+        }, 250);
+      }
+      this.editor.emit('agent-event', { type, data });
+    });
     this.agent.on('status', (status) => {
       this.toolbar.setAgentStatus(status, this.agent.info);
       const wasAgent = this.editor.project.kind === 'agent';

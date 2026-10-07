@@ -109,10 +109,49 @@ export class AgentClient extends Emitter {
       const info = await this.get('/api/health');
       if (this.info?.persistentToken !== info.persistentToken) this.rememberToken(!!info.persistentToken);
       this.setStatus('connected', info);
+      this.openEvents();
       return true;
     } catch (err) {
       if (err.status !== 401) this.setStatus('offline');
       return false;
+    }
+  }
+
+  /**
+   * Keep an authenticated event stream open and emit 'event' for each
+   * server-sent event ({ type, data }). Reconnects after drops.
+   */
+  async openEvents() {
+    if (this.streaming || !this.token) return;
+    this.streaming = true;
+    try {
+      const res = await fetch('/api/events', { headers: { 'X-Vox-Token': this.token }, cache: 'no-store', credentials: 'omit' });
+      if (!res.ok || !res.body) throw new Error(`status ${res.status}`);
+      const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
+      let buffer = '';
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += value;
+        let i;
+        while ((i = buffer.indexOf('\n\n')) >= 0) {
+          const block = buffer.slice(0, i);
+          buffer = buffer.slice(i + 2);
+          const type = /^event: (.*)$/m.exec(block)?.[1];
+          const data = /^data: (.*)$/m.exec(block)?.[1];
+          if (!type || data === undefined) continue;
+          try {
+            this.emit('event', { type, data: JSON.parse(data) });
+          } catch {
+            // Ignore malformed events.
+          }
+        }
+      }
+    } catch {
+      // Agent stopped or stream refused; the health poll reports status.
+    } finally {
+      this.streaming = false;
+      if (this.connected) setTimeout(() => this.openEvents(), 2000);
     }
   }
 

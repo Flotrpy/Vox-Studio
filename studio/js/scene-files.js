@@ -177,7 +177,33 @@ export class SceneFiles {
     return this.writeTo(`${dir}/${clean}${SCENE_EXTENSION}`);
   }
 
+  /**
+   * React to files changed on disk (from the agent's watcher): refresh the
+   * Project panel and reload the open scene if it changed and has no unsaved
+   * edits here.
+   */
+  async onFilesChanged(paths) {
+    this.editor.emit('project-refresh');
+    const path = this.scene.path;
+    if (!path || !paths.includes(path) || this.editor.isPlaying) return;
+    if (Date.now() - (this.lastWrite || 0) < 1500) return; // our own save
+    if (this.scene.dirty) {
+      this.editor.log.warn(`${path} changed on disk. Save to overwrite it, or reopen it to load the new version.`);
+      return;
+    }
+    try {
+      const data = await this.editor.project.readScene(path);
+      const selection = this.editor.selection.ids.slice();
+      this.editor.loadScene(data, path);
+      this.editor.selection.set(selection.filter((id) => this.scene.has(id)));
+      this.editor.log.info(`Reloaded ${path} (changed on disk)`);
+    } catch (err) {
+      this.editor.log.error(`Could not reload ${path}`, err.message);
+    }
+  }
+
   async writeTo(path) {
+    this.lastWrite = Date.now();
     try {
       const res = await this.editor.project.writeScene(path, this.scene.toData());
       this.scene.path = res.path || path;
