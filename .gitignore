@@ -4,3 +4,5 @@ VoxProject/
 .DS_Store
 Thumbs.db
 /test-output/
+/test-results/
+/playwright-report/

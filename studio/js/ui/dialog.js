@@ -69,7 +69,8 @@ export function openDialog({ title, body, buttons = [{ label: 'Close', primary: 
         first.focus();
       }
     }
-    e.stopPropagation();
+    // Other keys reach the focused control; global hotkeys skip while a
+    // dialog is open (see hotkeys.js).
   }
 
   closeBtn.addEventListener('click', close);

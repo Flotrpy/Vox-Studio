@@ -165,7 +165,19 @@ VoxProject/
 npm test
 ```
 
-Runs the agent security tests (token, Origin, Host, path traversal, size
+Browser tests (Playwright, Chromium) cover editing, docking, play mode,
+builds and the layout metrics at 1920x1080 and 1366x768:
+
+```
+npx playwright install chromium   # once
+npm run test:e2e
+npm run test:visual               # screenshot baselines, see docs/UI_REFERENCE.md
+```
+
+CI (`.github/workflows/ci.yml`) runs the unit tests on Node 20 and 22 and
+the browser tests on every pull request.
+
+`npm test` runs the agent security tests (token, Origin, Host, path traversal, size
 limits, build export), scene format and serialization tests, OBJ and glTF
 parser tests, scene model and undo/redo tests, dock layout tests and physics
 and scripting tests with Node's built-in test runner.

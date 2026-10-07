@@ -35,5 +35,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
 
+## Development only
+
+- `@playwright/test` 1.56.1 (Apache License 2.0), used to run the browser
+  tests. It is a dev dependency and is not shipped in the editor or in
+  builds.
+
 Everything else in this repository (code, icons, logo, styles) is original
 work under the project's MIT license.

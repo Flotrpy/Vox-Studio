@@ -11,9 +11,15 @@
   },
   "scripts": {
     "start": "node agent/agent.js",
-    "test": "node --test"
+    "test": "node --test",
+    "test:e2e": "playwright test --project=e2e",
+    "test:visual": "playwright test --project=visual",
+    "test:all": "npm test && npm run test:e2e"
   },
   "engines": {
     "node": ">=20"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1"
   }
 }
