@@ -58,7 +58,7 @@ test('a linked .vox folder is never written to or cleaned up', async (t) => {
   await fs.writeFile(path.join(outside, 'uploads', 'keep.txt'), 'precious');
   await fs.cp(path.join(project, '.vox'), outside, { recursive: true });
   await fs.rm(path.join(project, '.vox'), { recursive: true });
-  await fs.symlink(outside, path.join(project, '.vox'), 'dir');
+  await fs.symlink(outside, path.join(project, '.vox'), 'junction'); // junctions need no privilege on Windows
 
   await clearStaleUploads(project);
   await ensureProject(project);
